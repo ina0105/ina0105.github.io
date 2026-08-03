@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ina Klaric — Machine learning &amp; representation research</title>
+<meta name="description" content="Ina Klaric — MSc Artificial Intelligence. Projects in medical imaging, model interpretability, retrieval-augmented generation, and neuro-AI alignment.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,300..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Palette derives from a diverging correlation colormap
+   (cyan <-> magenta) — the kind used to plot RDMs and
+   reconstruction error. Surface is a plotting canvas, not paper.
+   ============================================================ */
+:root{
+  --ink:      #101725;
+  --ink-2:    #35425c;
+  --muted:    #78899f;
+  --faint:    #9fb0c4;
+  --canvas:   #f5f8fb;
+  --panel:    #ffffff;
+  --rule:     #dde5ef;
+  --rule-2:   #eef2f8;
+
+  --cyan:     #0f95b4;
+  --blue:     #3a57d6;
+  --violet:   #7442cf;
+  --magenta:  #b8357f;
+  --teal:     #0c8878;
+  --amber:    #a4680b;
+  --rose:     #c73f5f;
+
+  --link:     var(--blue);
+
+  --f-display:'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --f-body:   'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --f-mono:   'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --pad: clamp(20px, 5vw, 76px);
+  --maxw: 1240px;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--canvas); color:var(--ink);
+  font-family:var(--f-body); font-size:17px; line-height:1.62;
+  font-optical-sizing:auto;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block}
+a{color:var(--link); text-decoration-thickness:1px; text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--blue); outline-offset:3px; border-radius:2px}
+
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 var(--pad)}
+
+/* --- utility type ---------------------------------------- */
+.mono{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:500}
+.eyebrow{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500}
+h1,h2,h3,h4{font-family:var(--f-display); font-weight:600; letter-spacing:-.02em; line-height:1.06; margin:0}
+h1{font-size:clamp(34px,5.4vw,62px); letter-spacing:-.035em}
+h2{font-size:clamp(25px,3.2vw,38px); letter-spacing:-.028em}
+h3{font-size:clamp(19px,2vw,23px); letter-spacing:-.02em}
+p{margin:0 0 1em}
+p:last-child{margin-bottom:0}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+.nav{
+  position:sticky; top:0; z-index:60;
+  background:rgba(245,248,251,.86);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--rule);
+}
+.nav-in{
+  max-width:var(--maxw); margin:0 auto; padding:0 var(--pad);
+  height:58px; display:flex; align-items:center; gap:24px;
+}
+.brand{
+  font-family:var(--f-display); font-weight:600; font-size:15px;
+  letter-spacing:-.01em; color:var(--ink); text-decoration:none;
+  display:flex; align-items:center; gap:9px; margin-right:auto;
+}
+.brand-dot{width:9px;height:9px;border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--magenta))}
+.nav a.nlink{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-2); text-decoration:none;
+  padding:6px 0; border-bottom:1.5px solid transparent;
+}
+.nav a.nlink:hover{color:var(--ink); border-bottom-color:var(--magenta)}
+@media(max-width:640px){ .nav a.nlink.opt{display:none} .nav-in{gap:16px} }
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{padding:clamp(46px,7vw,88px) 0 clamp(38px,5vw,64px)}
+.hero-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.02fr); gap:clamp(28px,4.5vw,64px); align-items:center}
+@media(max-width:940px){ .hero-grid{grid-template-columns:1fr; gap:34px} }
+
+.hero h1{margin:14px 0 0}
+.hero h1 em{
+  font-family:var(--f-body); font-style:italic; font-weight:400;
+  letter-spacing:-.01em;
+  background:linear-gradient(100deg,var(--cyan),var(--violet) 55%,var(--magenta));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.lede{font-size:18.5px; color:var(--ink-2); margin-top:20px; max-width:47ch}
+.hero-meta{
+  display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:26px;
+}
+.chipstat{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+  border:1px solid var(--rule); background:var(--panel);
+  padding:5px 10px; border-radius:2px; color:var(--ink-2);
+}
+.chipstat b{color:var(--ink); font-weight:700}
+.hero-cta{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+.btn{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+  padding:11px 18px; border-radius:2px; text-decoration:none; border:1px solid var(--ink);
+  background:var(--ink); color:#fff; display:inline-flex; align-items:center; gap:8px;
+  transition:transform .14s ease, background .14s ease;
+}
+.btn:hover{background:#000; transform:translateY(-1px)}
+.btn.ghost{background:transparent; color:var(--ink); border-color:var(--rule)}
+.btn.ghost:hover{border-color:var(--ink); background:var(--panel)}
+
+/* ---- SIGNATURE: projection panel ------------------------- */
+.plotcard{
+  background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+  box-shadow:0 1px 0 var(--rule-2), 0 22px 46px -30px rgba(16,23,37,.4);
+  overflow:hidden;
+}
+.plothead{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:12px 14px 10px; border-bottom:1px solid var(--rule-2);
+}
+.plothead .t{font-family:var(--f-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink)}
+.plothead .s{font-family:var(--f-mono); font-size:10.5px; color:var(--faint)}
+#plot{display:block; width:100%; height:auto; cursor:crosshair; touch-action:pan-y}
+.plotfoot{padding:11px 14px 13px; border-top:1px solid var(--rule-2)}
+.arrange{display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.arrange .lab{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); margin-right:2px}
+.seg{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.05em;
+  border:1px solid var(--rule); background:transparent; color:var(--ink-2);
+  padding:6px 11px; border-radius:2px; cursor:pointer; transition:all .14s ease;
+}
+.seg:hover{border-color:var(--ink-2); color:var(--ink)}
+.seg[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:#fff}
+.plothint{font-family:var(--f-mono); font-size:10.5px; color:var(--faint); margin-top:9px; line-height:1.5}
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.sec{padding:clamp(46px,6vw,84px) 0; border-top:1px solid var(--rule)}
+.sechead{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:34px}
+.sechead p{max-width:52ch; color:var(--ink-2); margin:12px 0 0}
+
+/* filters */
+.filters{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:26px}
+.fchip{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.05em;
+  border:1px solid var(--rule); background:var(--panel); color:var(--ink-2);
+  padding:6px 11px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+  transition:all .14s ease;
+}
+.fchip:hover{border-color:var(--ink-2)}
+.fchip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:#fff}
+.fchip .d{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
+
+/* project cards */
+.cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:18px}
+@media(max-width:560px){ .cards{grid-template-columns:1fr} }
+.card{
+  background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+  padding:0; position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+  transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.card::before{content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--ac)}
+.card:hover{border-color:#c8d4e4; box-shadow:0 16px 34px -26px rgba(16,23,37,.45); transform:translateY(-2px)}
+.card.hl{border-color:var(--ac); box-shadow:0 0 0 1px var(--ac), 0 18px 36px -26px rgba(16,23,37,.5)}
+.card.gone{display:none}
+.cbody{padding:20px 22px 0 24px}
+.cmeta{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:11px}
+.figno{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em; color:var(--faint); font-weight:500}
+.dom{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); font-weight:500; display:inline-flex; align-items:center; gap:6px}
+.dom .d{width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.yr{font-family:var(--f-mono); font-size:10.5px; color:var(--faint); margin-left:auto}
+.card h3{margin-bottom:9px}
+.claim{color:var(--ink-2); font-size:16.5px}
+
+.metrics{display:flex; flex-wrap:wrap; gap:6px; margin:15px 0 0}
+.metric{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.03em;
+  background:var(--canvas); border:1px solid var(--rule-2); border-radius:2px;
+  padding:5px 9px; color:var(--ink-2);
+}
+.metric b{color:var(--ink); font-weight:700}
+
+.tags{display:flex; flex-wrap:wrap; gap:5px; margin:14px 0 0}
+.tag{font-family:var(--f-mono); font-size:10px; letter-spacing:.05em; color:var(--muted); border:1px solid var(--rule-2); padding:3px 7px; border-radius:2px}
+
+/* expand */
+.exp{display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1)}
+.card.open .exp{grid-template-rows:1fr}
+.exp-in{overflow:hidden}
+.rows{margin:18px 0 0; border-top:1px solid var(--rule-2)}
+.row{display:grid; grid-template-columns:96px minmax(0,1fr); gap:14px; padding:13px 0; border-bottom:1px solid var(--rule-2)}
+.row:last-child{border-bottom:0}
+.row .k{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); padding-top:4px}
+.row .v{font-size:15.5px; color:var(--ink-2)}
+.row .v code{font-family:var(--f-mono); font-size:12.5px; background:var(--canvas); padding:1px 5px; border-radius:2px; color:var(--ink)}
+@media(max-width:480px){ .row{grid-template-columns:1fr; gap:3px} }
+
+.cfoot{
+  margin-top:auto; padding:14px 22px 15px 24px;
+  border-top:1px solid var(--rule-2); background:#fcfdfe;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.tog{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase;
+  background:none; border:0; padding:0; cursor:pointer; color:var(--ink);
+  display:inline-flex; align-items:center; gap:7px; margin-right:auto;
+}
+.tog:hover{color:var(--magenta)}
+.tog .car{transition:transform .28s ease; display:inline-block; font-size:9px}
+.card.open .tog .car{transform:rotate(90deg)}
+.clink{font-family:var(--f-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); text-decoration:none; border-bottom:1px solid var(--rule)}
+.clink:hover{color:var(--ink); border-bottom-color:var(--ink)}
+
+/* in-progress */
+.wip{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:18px}
+.wcard{background:transparent; border:1px dashed #c9d5e5; border-radius:3px; padding:20px 22px}
+.wcard h3{font-size:19px; margin-bottom:9px}
+.wcard p{font-size:15.5px; color:var(--ink-2)}
+.status{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--amber); border:1px solid #e6d3ad; background:#fdf8ee;
+  padding:3px 8px; border-radius:2px; display:inline-block; margin-bottom:12px;
+}
+.gapnote{font-family:var(--f-mono); font-size:10.5px; color:var(--faint); margin-top:12px; line-height:1.55}
+
+/* toolkit */
+.kit{display:grid; grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); gap:2px; background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden}
+.kitcol{background:var(--panel); padding:20px 20px 22px}
+.kitcol h4{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--faint); font-weight:500; margin-bottom:12px}
+.kitcol ul{list-style:none; margin:0; padding:0}
+.kitcol li{font-size:15.5px; color:var(--ink-2); padding:3px 0}
+
+/* contact */
+.contact{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:clamp(24px,4vw,56px); align-items:start}
+@media(max-width:800px){ .contact{grid-template-columns:1fr} }
+.clist{list-style:none;margin:22px 0 0;padding:0;border-top:1px solid var(--rule)}
+.clist li{display:flex; align-items:baseline; gap:16px; padding:13px 0; border-bottom:1px solid var(--rule)}
+.clist .k{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); min-width:78px}
+.clist a{font-family:var(--f-mono); font-size:13.5px; color:var(--ink); text-decoration:none; border-bottom:1px solid var(--rule)}
+.clist a:hover{border-bottom-color:var(--magenta); color:var(--magenta)}
+
+footer{border-top:1px solid var(--rule); padding:26px 0 40px}
+.foot-in{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap}
+.foot-in span{font-family:var(--f-mono); font-size:10.5px; color:var(--faint); letter-spacing:.05em}
+
+/* tooltip */
+#tip{
+  position:absolute; pointer-events:none; opacity:0; transform:translate(-50%,-124%);
+  background:var(--ink); color:#fff; padding:6px 10px; border-radius:2px;
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.04em; white-space:nowrap;
+  transition:opacity .12s ease; z-index:5;
+}
+#tip.on{opacity:1}
+#plotwrap{position:relative}
+
+/* reveal */
+.rv{opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease}
+.rv.in{opacity:1; transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important}
+  .rv{opacity:1; transform:none}
+}
+@media print{
+  .nav,.plotcard,.filters,.hero-cta{display:none}
+  body{background:#fff}
+  .card{break-inside:avoid; border-color:#bbb}
+  .exp{grid-template-rows:1fr !important}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top"><span class="brand-dot"></span><span id="brandName">Ina Klaric</span></a>
+    <a class="nlink" href="#work">Work</a>
+    <a class="nlink opt" href="#building">In progress</a>
+    <a class="nlink opt" href="#toolkit">Toolkit</a>
+    <a class="nlink" href="#contact">Contact</a>
+  </div>
+</nav>
+
+<main id="top">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow" id="heroEyebrow">MSc Artificial Intelligence</div>
+        <h1>I work on what models <em>represent</em> — and whether we can trust it.</h1>
+        <p class="lede" id="heroLede">Seven projects that keep circling the same question, from different angles: medical images, latent spaces, retrieved documents, and human brains. Mostly PyTorch, always with the statistics attached.</p>
+
+        <div class="hero-meta">
+          <span class="chipstat"><b>7</b> projects shipped</span>
+          <span class="chipstat"><b>4</b> research domains</span>
+          <span class="chipstat"><b>2024</b>&thinsp;–&thinsp;<b>2026</b></span>
+        </div>
+
+        <div class="hero-cta">
+          <a class="btn" href="#work">Read the work &nbsp;↓</a>
+          <a class="btn ghost" id="ghLink" href="https://github.com/ina0105" target="_blank" rel="noopener">GitHub</a>
+          <a class="btn ghost" id="cvLink" href="#" target="_blank" rel="noopener">CV (PDF)</a>
+        </div>
+      </div>
+
+      <!-- SIGNATURE ELEMENT -->
+      <div class="plotcard" id="plotwrap">
+        <div class="plothead">
+          <span class="t">Project space</span>
+          <span class="s" id="plotSub">arranged by domain</span>
+        </div>
+        <canvas id="plot" width="1120" height="760" role="img"
+          aria-label="Scatter plot where each cluster of points is one project. Use the arrangement buttons below, or the project list, to explore."></canvas>
+        <div id="tip"></div>
+        <div class="plotfoot">
+          <div class="arrange">
+            <span class="lab">Arrange by</span>
+            <button class="seg" data-layout="domain" aria-pressed="true">domain</button>
+            <button class="seg" data-layout="time" aria-pressed="false">timeline</button>
+            <button class="seg" data-layout="stack" aria-pressed="false">stack</button>
+          </div>
+          <p class="plothint">Each cluster is one project. Hover to name it, click to jump to it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WORK ================= -->
+  <section class="sec" id="work">
+    <div class="wrap">
+      <div class="sechead rv">
+        <div>
+          <div class="eyebrow">Selected work</div>
+          <h2 style="margin-top:12px">Seven projects, four domains</h2>
+          <p>Every card opens into the actual problem, what I built, and what the numbers said — including the times the fancier model lost.</p>
+        </div>
+      </div>
+
+      <div class="filters rv" id="filters" role="group" aria-label="Filter projects by domain"></div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+
+  <!-- ================= IN PROGRESS ================= -->
+  <section class="sec" id="building">
+    <div class="wrap">
+      <div class="sechead rv">
+        <div>
+          <div class="eyebrow">In progress</div>
+          <h2 style="margin-top:12px">What I'm building next</h2>
+          <p>Nothing here is finished, and it says so. Each one closes a specific gap between research code and something another engineer could pick up and run.</p>
+        </div>
+      </div>
+      <div class="wip rv" id="wip"></div>
+    </div>
+  </section>
+
+  <!-- ================= TOOLKIT ================= -->
+  <section class="sec" id="toolkit">
+    <div class="wrap">
+      <div class="sechead rv">
+        <div>
+          <div class="eyebrow">Toolkit</div>
+          <h2 style="margin-top:12px">Things I've actually used in anger</h2>
+          <p>Listed because they appear in the projects above, not because they look good in a list.</p>
+        </div>
+      </div>
+      <div class="kit rv" id="kit"></div>
+    </div>
+  </section>
+
+  <!-- ================= CONTACT ================= -->
+  <section class="sec" id="contact">
+    <div class="wrap contact">
+      <div class="rv">
+        <div class="eyebrow">Contact</div>
+        <h2 style="margin-top:12px">Open to research and ML engineering roles</h2>
+        <p style="margin-top:18px; color:var(--ink-2)" id="contactBlurb">Most interested in work where the model output has to hold up to scrutiny — medical imaging, evaluation, interpretability. Happy to walk through any of the projects above in detail, code included.</p>
+      </div>
+      <div class="rv">
+        <ul class="clist" id="clist"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <span id="footName">Ina Klaric</span>
+    <span>Built from scratch — no template, no framework</span>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   1. EDIT ME  ·  everything personal lives in this one object
+   ============================================================ */
+const PROFILE = {
+  name:     "Ina Klaric",
+  eyebrow:  "MSc Artificial Intelligence",          // e.g. "MSc Artificial Intelligence · University of Amsterdam"
+  github:   "https://github.com/ina0105",
+  cv:       "cv.pdf",                                // drop cv.pdf next to index.html
+  links: [
+    { k:"Email",    label:"your.email@example.com", href:"mailto:your.email@example.com" },
+    { k:"LinkedIn", label:"linkedin.com/in/your-handle", href:"https://linkedin.com/in/your-handle" },
+    { k:"GitHub",   label:"github.com/ina0105", href:"https://github.com/ina0105" },
+    { k:"Location", label:"Add your city", href:null },
+  ]
+};
+
+/* ============================================================
+   2. DOMAINS  ·  colour + cluster identity
+   ============================================================ */
+const DOMAINS = {
+  medical:   { label:"Medical imaging",  color:"var(--magenta)", raw:"#b8357f" },
+  interp:    { label:"Interpretability", color:"var(--cyan)",    raw:"#0f95b4" },
+  nlp:       { label:"NLP & retrieval",  color:"var(--blue)",    raw:"#3a57d6" },
+  neuro:     { label:"Neuro-AI",         color:"var(--violet)",  raw:"#7442cf" },
+  recsys:    { label:"Recommenders",     color:"var(--teal)",    raw:"#0c8878" },
+  robust:    { label:"Robustness",       color:"var(--amber)",   raw:"#a4680b" },
+  frontend:  { label:"Frontend",         color:"var(--rose)",    raw:"#c73f5f" },
+};
+
+/* ============================================================
+   3. PROJECTS  ·  add one object to add a project everywhere
+      (cards, filters, and the scatter plot all read from here)
+   ============================================================ */
+const PROJECTS = [
+{
+  id:"virtual-biopsy",
+  title:"Virtual Biopsy",
+  domain:"medical",
+  year:2026, when:"Jun 2026",
+  claim:"Predicting how much of a brain tumour is actually tumour — from imaging alone, without a needle.",
+  metrics:[["AUC","0.78"],["16","folds"],["133","biopsies"]],
+  problem:"Tumour purity — the fraction of malignant cells in a sample — normally requires cutting a physical biopsy from one spot. Diffuse gliomas are heterogeneous, so a single needle can badly misrepresent the tumour, and you can't re-sample a brain casually.",
+  approach:"Semi-supervised regression over multimodal MRI and PET volumes, with two backbones compared head to head: a UNet and a pretrained SwinUNETR. Ran a modality ablation (MRI, PET, MRI+PET, and a 13-channel stack), plus channel- and spatial-attention variants. Registered to SRI24, segmented with nnU-Net, and supervised only at the 133 real biopsy coordinates where a measured purity value exists — the rest of the volume trains unlabelled. Significance from Wilcoxon signed-rank with FDR correction across 16 folds.",
+  result:"The UNet with channel attention reached a mean biopsy-level AUC of 0.78. Adding PET more than doubled the rank correlation with measured purity — Spearman r rose from 0.21 (MRI only) to 0.47 (MRI+PET, p ≈ 1.7e-8). The pretrained SwinUNETR lost decisively at 0.58 AUC: on 133 labelled points, the big transformer had nothing to stand on. Attention comparisons didn't survive FDR correction, so I reported them as inconclusive rather than as a win.",
+  stack:["PyTorch","MONAI","SwinUNETR","nnU-Net","SRI24","SciPy","Wilcoxon + FDR"],
+  repo:"https://github.com/ina0105/Virtual_Biopsy",
+  tags:["semi-supervised","3D segmentation","multimodal","attention","clinical validation"]
+},
+{
+  id:"wiztrimap",
+  title:"WizTriMap",
+  domain:"interp",
+  year:2025, when:"Jun 2025",
+  claim:"A dimensionality-reduction dashboard that can tell you how much the projection lied to you.",
+  metrics:[["3","datasets"],["2–7D","embeddings"],["★2 / ⑂3","on GitHub"]],
+  problem:"Everyone stares at 2D scatter plots of latent space and draws conclusions from them, but a projection throws information away and never says how much. If two points look close, you have no way to know whether that's the data or the algorithm.",
+  approach:"A user-centred extension of TriMap, built as a Dash application. TriMap runs at 2D through 7D; for every dataset–method–dimension combination I train an inversion model that decodes an embedding back into an image, so you can click anywhere in the projection and see what the model thinks lives there. Reconstruction error becomes a measure of distortion you can actually plot. It also walks the embeddings from three layers of a CNN so you can watch representations reorganise layer by layer, and includes hyperbolic-embedding experiments and a CIFAR-100 case study.",
+  result:"A working dashboard over MNIST, FashionMNIST and CIFAR-100 that lets a practitioner compare DR methods, inspect any point by reconstruction, and see where the projection is least trustworthy. Embeddings are cached on first run so reloads are fast. Picked up stars and forks from outside the project.",
+  stack:["Plotly Dash","PyTorch","TriMap","NumPy","clientside callbacks"],
+  repo:"https://github.com/ina0105/WizTriMap",
+  tags:["dimensionality reduction","visual analytics","inversion models","interactive"]
+},
+{
+  id:"scene-semantics",
+  title:"Scene Semantics",
+  domain:"neuro",
+  year:2026, when:"2025 – 2026",
+  claim:"Do language and vision-language models organise scenes the way the human brain does?",
+  metrics:[["fMRI","multi-subject"],["5","context conditions"],["2","networks"]],
+  problem:"Models and brains can produce the same behaviour through completely different internal geometry. Representational similarity analysis compares the shape of representations instead of the outputs — but it only means something if the comparison is built carefully on both sides.",
+  approach:"Processed fMRI for multiple participants, pulled activations from the language network (left hemisphere) and the visual network separately, and built representational dissimilarity matrices with cosine distance. Then built matched RDMs from model representations: text-only from an LLM, and vision-language from BLIP-2. Ran the model side across five context conditions — one word, one general sentence, one distinct sentence, five general, five distinct — to isolate how much linguistic context a model needs before its geometry starts matching the brain's.",
+  result:"An RSA pipeline comparing brain and model geometry across networks, model types and context depth, with each condition kept as a separate reproducible run rather than a single aggregate score.",
+  stack:["PyTorch","Transformers","BLIP-2","FAISS","NumPy","fMRI preprocessing"],
+  repo:"https://github.com/ina0105/Scene_semantics",
+  tags:["RSA","RDM","fMRI","vision-language","cognitive neuroscience"]
+},
+{
+  id:"powerless-noise",
+  title:"The Powerless Noise",
+  domain:"nlp",
+  year:2025, when:"Nov – Dec 2025",
+  claim:"We tried to reproduce the finding that random documents help RAG. The name is the result.",
+  metrics:[["21M","passage corpus"],["4","authors"],["SIGIR'24","paper"]],
+  problem:"A SIGIR 2024 paper reported something genuinely counterintuitive: injecting random, irrelevant documents into a RAG prompt can improve answer accuracy. If true, it changes how you build retrieval. So it needed checking independently.",
+  approach:"Rebuilt the pipeline from the paper rather than running the authors' code: a 21-million-passage Wikipedia corpus with Natural Questions gold documents merged in and duplicates filtered, a 10K working sample, and generation runs that vary the mix of gold, retrieved, distracting and random documents as well as their position in the prompt. Added experiment configurations beyond the original to probe where the effect should appear if it were real. Written up as a paper with three collaborators.",
+  result:"Our reproduction did not support the headline claim — hence 'The Powerless Noise'. The interesting part was isolating which experimental choices the original effect was sensitive to, which is the part a reader can actually use.",
+  stack:["Python","HuggingFace Datasets","Transformers","open-weight LLMs","retrieval eval"],
+  repo:"https://github.com/ina0105/The-Power-of-Noise-Reproduction",
+  tags:["RAG","reproducibility","retrieval","evaluation","collaboration"]
+},
+{
+  id:"movie-recommender",
+  title:"Movie Recommender",
+  domain:"recsys",
+  year:2025, when:"Jun 2025",
+  claim:"Three escalating ranking pipelines on the same data, so the gains are attributable.",
+  metrics:[["3","pipelines"],["NDCG@K","optimised"],["4","models ensembled"]],
+  problem:"Recommender results are easy to inflate: leak future ratings into training, or bolt on features until a metric moves, and you learn nothing about what caused the improvement.",
+  approach:"Built the same task three ways so each increment is measurable. First a LightGBM baseline on basic user and item features. Then a weighted ensemble of LightGBM, XGBoost, Random Forest and Ridge, with weights fit on validation. Finally a learning-to-rank model — LightGBM with the lambdarank objective, directly optimising NDCG — fed engineered features: temporal and seasonality patterns, SVD latent factors, user–item interaction graph properties, and session-level rating sequences. Splits are chronological throughout, so no future information reaches the training set.",
+  result:"A clean comparison across the three approaches on Precision@K, Recall@K and NDCG@K, with feature importances exported so the ranking gains can be traced back to specific feature families.",
+  stack:["LightGBM","XGBoost","scikit-learn","SVD","pandas"],
+  repo:"https://github.com/ina0105/Movie-Recommender-system",
+  tags:["learning to rank","lambdarank","feature engineering","ensembles"]
+},
+{
+  id:"adversarial",
+  title:"Adversarial Attacks & Defences",
+  domain:"robust",
+  year:2024, when:"Dec 2024",
+  claim:"Implementing attacks from scratch to understand why robust training is expensive.",
+  metrics:[["from","scratch"],["GPU","training loop"]],
+  problem:"Robustness claims are easy to make and hard to earn. Writing the attacks yourself is the fastest way to see how thin most defences are.",
+  approach:"Implemented adversarial attack methods and the surrounding training and evaluation loop directly, with a configurable harness for comparing implementations and hyperparameters across models. Coursework, kept public because the implementation is the point.",
+  result:"A working attack-and-evaluate setup, and a much better intuition for the accuracy-versus-robustness trade-off than reading about it provides.",
+  stack:["PyTorch","CUDA"],
+  repo:"https://github.com/ina0105/assign3",
+  tags:["adversarial ML","coursework"]
+},
+{
+  id:"gameshub",
+  title:"Ina Times Games",
+  domain:"frontend",
+  year:2025, when:"Mar 2025",
+  claim:"Four puzzle games written by hand, as a gift. No frameworks, no dependencies, no build step.",
+  metrics:[["4","games"],["0","dependencies"]],
+  problem:"I wanted to give someone a personalised set of daily puzzles — the crossword, Wordle, Connections and Strands — with their own words in them.",
+  approach:"Four self-contained HTML files, each with its own game logic in plain JavaScript. The crossword takes a grid specification and works out across and down numbering itself, then renders and validates the grid. Connections handles group selection and win detection; Strands tracks valid word paths; Wordle does per-letter state colouring across attempts.",
+  result:"A hub that opens in any browser with no install, and a reminder that a small amount of vanilla JavaScript goes a surprisingly long way.",
+  stack:["HTML","CSS","vanilla JavaScript"],
+  repo:"https://github.com/ina0105/gameshub",
+  tags:["frontend","game logic","zero dependencies","for fun"]
+},
+];
+
+/* ============================================================
+   4. IN PROGRESS  ·  honest status; delete what you don't start
+   ============================================================ */
+const WIP = [
+{
+  title:"Purity Atlas — Virtual Biopsy, deployed",
+  status:"Scoping",
+  body:"Wrapping the glioma purity model in an inference service: ONNX export, FastAPI endpoint, a small viewer that overlays a predicted purity map on an uploaded volume, containerised so it runs anywhere.",
+  gap:"Closes the gap: strong research code, nothing you can click."
+},
+{
+  title:"rdmbench — RSA as a library",
+  status:"In progress",
+  body:"Packaging the Scene Semantics pipeline into an installable tool: build an RDM from any representation matrix, compare brain against model with permutation tests and FDR correction, with unit tests and CI on every push.",
+  gap:"Closes the gap: research scripts vs. code someone else can install and trust."
+},
+{
+  title:"noise-eval — a retrieval robustness harness",
+  status:"Planned",
+  body:"Turning the reproduction study into a reusable harness: declare a context recipe in config — how much gold, distracting and random content, and where — then run it across open-weight models and get a comparable table out.",
+  gap:"Closes the gap: one-off experiments vs. reusable evaluation infrastructure."
+},
+];
+
+/* ============================================================
+   5. TOOLKIT
+   ============================================================ */
+const KIT = [
+  { h:"Modelling",   items:["PyTorch","MONAI","Transformers","LightGBM / XGBoost","scikit-learn"] },
+  { h:"Domains",     items:["3D medical imaging","Vision-language models","Retrieval & RAG","Learning to rank","fMRI / RSA"] },
+  { h:"Methods",     items:["Semi-supervised learning","Attention mechanisms","Dimensionality reduction","Ablation design","Non-parametric statistics"] },
+  { h:"Engineering", items:["Python","Plotly Dash","JavaScript","Conda / environments","Git"] },
+];
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// profile
+$("#brandName").textContent = PROFILE.name;
+$("#footName").textContent  = PROFILE.name;
+$("#heroEyebrow").textContent = PROFILE.eyebrow;
+$("#ghLink").href = PROFILE.github;
+$("#cvLink").href = PROFILE.cv;
+document.title = PROFILE.name + " — Machine learning & representation research";
+
+$("#clist").innerHTML = PROFILE.links.map(l=>`
+  <li><span class="k">${esc(l.k)}</span>${
+    l.href ? `<a href="${esc(l.href)}"${l.href.startsWith('http')?' target="_blank" rel="noopener"':''}>${esc(l.label)}</a>`
+           : `<span style="font-family:var(--f-mono);font-size:13.5px;color:var(--muted)">${esc(l.label)}</span>`
+  }</li>`).join("");
+
+// filters
+const used = [...new Set(PROJECTS.map(p=>p.domain))];
+$("#filters").innerHTML =
+  `<button class="fchip" data-f="all" aria-pressed="true">All ${PROJECTS.length}</button>` +
+  used.map(d=>{
+    const n = PROJECTS.filter(p=>p.domain===d).length;
+    return `<button class="fchip" data-f="${d}" aria-pressed="false" style="--ac:${DOMAINS[d].color}">
+      <span class="d" style="background:${DOMAINS[d].color}"></span>${esc(DOMAINS[d].label)} ${n}</button>`;
+  }).join("");
+
+// cards
+$("#cards").innerHTML = PROJECTS.map((p,i)=>{
+  const D = DOMAINS[p.domain];
+  return `<article class="card" id="p-${p.id}" data-dom="${p.domain}" style="--ac:${D.color}">
+    <div class="cbody">
+      <div class="cmeta">
+        <span class="figno">FIG. ${String(i+1).padStart(2,"0")}</span>
+        <span class="dom"><span class="d"></span>${esc(D.label)}</span>
+        <span class="yr">${esc(p.when)}</span>
+      </div>
+      <h3>${esc(p.title)}</h3>
+      <p class="claim">${esc(p.claim)}</p>
+      <div class="metrics">${p.metrics.map(m=>`<span class="metric"><b>${esc(m[0])}</b> ${esc(m[1])}</span>`).join("")}</div>
+      <div class="exp"><div class="exp-in"><div class="rows">
+        <div class="row"><span class="k">Problem</span><span class="v">${esc(p.problem)}</span></div>
+        <div class="row"><span class="k">Approach</span><span class="v">${esc(p.approach)}</span></div>
+        <div class="row"><span class="k">Result</span><span class="v">${esc(p.result)}</span></div>
+        <div class="row"><span class="k">Stack</span><span class="v">${p.stack.map(s=>`<code>${esc(s)}</code>`).join(" ")}</span></div>
+      </div></div></div>
+      <div class="tags">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+    </div>
+    <div class="cfoot">
+      <button class="tog" aria-expanded="false"><span class="car">▶</span><span class="tt">Read the detail</span></button>
+      <a class="clink" href="${esc(p.repo)}" target="_blank" rel="noopener">Code ↗</a>
+    </div>
+  </article>`;
+}).join("");
+
+// wip + kit
+$("#wip").innerHTML = WIP.map(w=>`<article class="wcard">
+  <span class="status">${esc(w.status)}</span>
+  <h3>${esc(w.title)}</h3><p>${esc(w.body)}</p>
+  <p class="gapnote">${esc(w.gap)}</p></article>`).join("");
+
+$("#kit").innerHTML = KIT.map(k=>`<div class="kitcol"><h4>${esc(k.h)}</h4>
+  <ul>${k.items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></div>`).join("");
+
+/* ---- expand / collapse ---- */
+$("#cards").addEventListener("click", e=>{
+  const b = e.target.closest(".tog"); if(!b) return;
+  const card = b.closest(".card"), open = card.classList.toggle("open");
+  b.setAttribute("aria-expanded", open);
+  b.querySelector(".tt").textContent = open ? "Close" : "Read the detail";
+});
+
+/* ---- filtering ---- */
+let filter = "all";
+$("#filters").addEventListener("click", e=>{
+  const b = e.target.closest(".fchip"); if(!b) return;
+  filter = b.dataset.f;
+  [...$("#filters").children].forEach(c=>c.setAttribute("aria-pressed", c===b));
+  document.querySelectorAll(".card").forEach(c=>
+    c.classList.toggle("gone", filter!=="all" && c.dataset.dom!==filter));
+});
+
+/* ============================================================
+   SIGNATURE PLOT
+   Each project is a cluster. Three arrangements, each encoding
+   something real: research domain, chronology, or shared stack.
+   ============================================================ */
+(function(){
+  const cv = $("#plot"), tip = $("#tip");
+  if(!cv) return;
+  const ctx = cv.getContext("2d");
+  const PPP = 26;                       // points per project
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // --- deterministic pseudo-random so layout is stable -------
+  let seed = 7;
+  const rnd = ()=>{ seed = (seed*1664525+1013904223)%4294967296; return seed/4294967296; };
+  const gauss = ()=>{ let u=0,v=0; while(!u)u=rnd(); while(!v)v=rnd();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+
+  // --- cluster centres per arrangement (normalised 0..1) ----
+  const domainPos = {
+    medical:[.24,.26], interp:[.70,.22], nlp:[.76,.60],
+    neuro:[.44,.46], recsys:[.22,.70], robust:[.55,.82], frontend:[.86,.86]
+  };
+  const stackGroup = {                  // shared-tooling neighbourhoods
+    "virtual-biopsy":[.26,.30], "wiztrimap":[.46,.24], "scene-semantics":[.30,.60],
+    "powerless-noise":[.62,.52], "movie-recommender":[.80,.30],
+    "adversarial":[.52,.78], "gameshub":[.86,.80]
+  };
+  const yJit = { 2024:.60, 2025:.38, 2026:.66 };
+
+  function targets(mode){
+    return PROJECTS.map((p,i)=>{
+      if(mode==="domain") return domainPos[p.domain] || [.5,.5];
+      if(mode==="stack")  return stackGroup[p.id]    || [.5,.5];
+      const t = (p.year-2024)/2;                        // 2024→0, 2026→1
+      return [ .10 + t*.80, (yJit[p.year]||.5) + (i%2?-.13:.13) ];
+    });
+  }
+
+  // --- build point cloud ------------------------------------
+  const jit = PROJECTS.map(()=> Array.from({length:PPP},()=>[gauss(),gauss()]) );
+  const pts = PROJECTS.map((p,pi)=> jit[pi].map(()=>({x:rnd(),y:rnd(),tx:0,ty:0})) );
+
+  let mode="domain", hot=-1, W=0, H=0, dpr=1;
+  const PAD = 42;
+  const SPREAD = { domain:.058, stack:.052, time:.042 };
+
+  function setTargets(){
+    const T = targets(mode), s = SPREAD[mode];
+    PROJECTS.forEach((p,pi)=> pts[pi].forEach((pt,j)=>{
+      pt.tx = Math.min(.97, Math.max(.03, T[pi][0] + jit[pi][j][0]*s));
+      pt.ty = Math.min(.97, Math.max(.03, T[pi][1] + jit[pi][j][1]*s));
+      if(reduce){ pt.x=pt.tx; pt.y=pt.ty; }
+    }));
+  }
+
+  function resize(){
+    const r = cv.getBoundingClientRect();
+    dpr = Math.min(2, devicePixelRatio||1);
+    W = r.width; H = Math.max(240, Math.min(430, r.width*0.68));
+    cv.style.height = H+"px";
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  const sx = u => PAD + u*(W-PAD*2);
+  const sy = v => PAD*0.7 + v*(H-PAD*1.5);
+
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+
+    // plot furniture: faint grid + tick marks
+    ctx.strokeStyle="#eef3f9"; ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const gy = sy(i/4); ctx.beginPath(); ctx.moveTo(PAD*.6,gy); ctx.lineTo(W-PAD*.6,gy); ctx.stroke();
+      const gx = sx(i/4); ctx.beginPath(); ctx.moveTo(gx,sy(0)-8); ctx.lineTo(gx,sy(1)+8); ctx.stroke();
+    }
+
+    // timeline axis is real information, so label it
+    if(mode==="time"){
+      ctx.font='500 10px "JetBrains Mono", monospace'; ctx.textAlign="center";
+      ctx.fillStyle="#9fb0c4";
+      [[2024,.10],[2025,.50],[2026,.90]].forEach(([yr,u])=>{
+        ctx.strokeStyle="#dde5ef"; ctx.beginPath();
+        ctx.moveTo(sx(u),sy(1)+6); ctx.lineTo(sx(u),sy(1)+12); ctx.stroke();
+        ctx.fillText(yr, sx(u), sy(1)+26);
+      });
+    }
+
+    // points
+    PROJECTS.forEach((p,pi)=>{
+      const raw = DOMAINS[p.domain].raw;
+      const dim = hot>=0 && hot!==pi;
+      pts[pi].forEach(pt=>{
+        if(!reduce){ pt.x += (pt.tx-pt.x)*0.075; pt.y += (pt.ty-pt.y)*0.075; }
+        ctx.beginPath();
+        ctx.arc(sx(pt.x), sy(pt.y), hot===pi?3.5:2.7, 0, 6.2832);
+        ctx.fillStyle = raw;
+        ctx.globalAlpha = dim ? 0.13 : (hot===pi ? 0.95 : 0.62);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      // centroid label on hover
+      if(hot===pi){
+        const cx = sx(pts[pi].reduce((a,b)=>a+b.x,0)/PPP);
+        const cy = sy(pts[pi].reduce((a,b)=>a+b.y,0)/PPP);
+        ctx.beginPath(); ctx.arc(cx,cy,20,0,6.2832);
+        ctx.strokeStyle=raw; ctx.globalAlpha=.45; ctx.lineWidth=1; ctx.stroke(); ctx.globalAlpha=1;
+      }
+    });
+    requestAnimationFrame(frame);
+  }
+
+  function nearest(mx,my){
+    let best=-1, bd=1e9;
+    PROJECTS.forEach((p,pi)=>{
+      const cx = sx(pts[pi].reduce((a,b)=>a+b.x,0)/PPP);
+      const cy = sy(pts[pi].reduce((a,b)=>a+b.y,0)/PPP);
+      const d = (cx-mx)**2 + (cy-my)**2;
+      if(d<bd){ bd=d; best=pi; }
+    });
+    return bd < 52**2 ? best : -1;
+  }
+
+  cv.addEventListener("mousemove", e=>{
+    const r = cv.getBoundingClientRect();
+    const mx = e.clientX-r.left, my = e.clientY-r.top;
+    hot = nearest(mx,my);
+    if(hot>=0){
+      const p = PROJECTS[hot];
+      tip.textContent = p.title + "  ·  " + p.when;
+      tip.style.left = mx+"px"; tip.style.top = (my + cv.offsetTop)+"px";
+      tip.classList.add("on"); cv.style.cursor="pointer";
+    } else { tip.classList.remove("on"); cv.style.cursor="crosshair"; }
+  });
+  cv.addEventListener("mouseleave", ()=>{ hot=-1; tip.classList.remove("on"); });
+  cv.addEventListener("click", e=>{
+    const r = cv.getBoundingClientRect();
+    const i = nearest(e.clientX-r.left, e.clientY-r.top);
+    if(i<0) return;
+    const card = document.getElementById("p-"+PROJECTS[i].id);
+    if(filter!=="all"){ $('#filters .fchip[data-f="all"]').click(); }
+    card.scrollIntoView({behavior: reduce?"auto":"smooth", block:"center"});
+    card.classList.add("hl");
+    if(!card.classList.contains("open")) card.querySelector(".tog").click();
+    setTimeout(()=>card.classList.remove("hl"), 2200);
+  });
+
+  document.querySelectorAll(".seg").forEach(b=>b.addEventListener("click",()=>{
+    mode = b.dataset.layout;
+    document.querySelectorAll(".seg").forEach(o=>o.setAttribute("aria-pressed", o===b));
+    $("#plotSub").textContent = "arranged by " + ({domain:"domain",time:"timeline",stack:"stack"})[mode];
+    setTargets();
+  }));
+
+  addEventListener("resize", resize);
+  resize(); setTargets(); frame();
+})();
+
+/* ---- scroll reveal ---- */
+const io = new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+}),{threshold:.08});
+document.querySelectorAll(".rv").forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
