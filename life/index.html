@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ina Klaric</title>
+<meta name="description" content="A dollhouse with five rooms, a cellar of code, and thirty things to open. Ina Klaric — MSc Artificial Intelligence, University of Amsterdam.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Karla:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ac:#5f8f6f;
+  --card:#fcf7ea;
+  --ink:#463527;
+  --dim:#8c7962;
+  --line:rgba(70,53,39,.16);
+  --fd:'Young Serif',Georgia,'Times New Roman',serif;   /* cut, not typed */
+  --fb:'Karla',ui-sans-serif,system-ui,sans-serif;      /* the reading voice */
+  --fm:'Courier Prime','Courier New',ui-monospace,monospace;  /* the label on the drawer */
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;color:var(--ink);font-family:var(--fb);
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+  background:#aecbd8;
+}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+body.zoom #scene{cursor:zoom-out}
+
+#cam{transform-box:view-box;transform-origin:0 0;
+  transition:transform .62s cubic-bezier(.38,0,.18,1)}
+#back,#front,#yard,#yardfg{transition:opacity .45s ease}
+body.zoom #back,body.zoom #front{opacity:.42}
+body.zoom #yard,body.zoom #yardfg{opacity:.5}
+.room{transition:opacity .45s ease,filter .25s ease;cursor:zoom-in}
+body.zoom .room:not(.active){opacity:.16;cursor:zoom-out}
+body.zoom .room.active{cursor:default}
+body:not(.zoom) .room:hover{filter:brightness(1.06) saturate(1.05)}
+.room:focus,.obj:focus{outline:none}
+.room.active .obj:focus-visible .shape{filter:brightness(1.18) drop-shadow(0 0 3px var(--rc))}
+body:not(.zoom) .room:focus-visible{filter:brightness(1.12)}
+
+.obj{pointer-events:none}
+.room.active .obj{pointer-events:auto;cursor:pointer}
+.room.active .obj:hover .shape{filter:brightness(1.1)}
+.mk{opacity:0;transition:opacity .4s ease .2s}
+.room.active .mk{opacity:1}
+.mk .core{fill:var(--rc)}
+.mk .halo,.mk .ring{pointer-events:none}
+.mk .ring{fill:none;stroke:var(--rc);stroke-width:1.7;animation:ping 2.8s ease-out infinite}
+@keyframes ping{0%{r:5;opacity:.95}72%{r:15;opacity:0}100%{r:15;opacity:0}}
+
+#bar{position:fixed;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:flex-start;gap:14px;padding:16px clamp(14px,3vw,30px);pointer-events:none}
+#bar>*{pointer-events:auto}
+.nm{font-family:var(--fd);font-weight:400;font-size:21px;letter-spacing:0;line-height:1.1;
+  color:#33281d;text-shadow:0 1px 2px rgba(255,255,255,.55)}
+#ident{transition:opacity .3s}
+body.zoom #ident{opacity:0;pointer-events:none}
+.sp{margin-left:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;
+  border-radius:99px;background:var(--card);border:1px solid var(--line);color:var(--ink);
+  cursor:pointer;box-shadow:0 2px 6px rgba(70,53,39,.08);transition:all .2s}
+.btn:hover{background:#fff;border-color:var(--ac);transform:translateY(-1px)}
+
+#cap{position:fixed;left:clamp(16px,3vw,34px);bottom:clamp(18px,3vw,30px);z-index:18;
+  pointer-events:none;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s}
+body.zoom #cap{opacity:1;transform:none}
+#cap i{display:flex;align-items:center;gap:7px;font-style:normal;font-family:var(--fm);
+  font-size:11.5px;color:#6d5b48;margin-bottom:7px}
+#cap i::before{content:"";width:8px;height:8px;background:var(--ac);border-radius:1px;flex:none}
+#cap b{font-family:var(--fd);font-size:clamp(25px,3.7vw,41px);font-weight:400;letter-spacing:-.005em;line-height:1.02}
+#cap s{display:block;text-decoration:none;font-size:11.5px;color:var(--dim);margin-top:8px}
+
+#tip{position:fixed;z-index:19;pointer-events:none;opacity:0;transition:opacity .18s;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 12px;
+  box-shadow:0 6px 16px rgba(70,53,39,.14);transform:translate(-50%,-140%)}
+#tip.on{opacity:1}
+#tip i{display:block;font-style:normal;font-family:var(--fm);font-size:10.5px;color:#7d6a56;margin-bottom:2px}
+#tip b{font-family:var(--fd);font-size:14.5px;font-weight:400}
+
+#card{position:fixed;z-index:25;right:clamp(14px,3vw,30px);top:50%;
+  transform:translateY(-50%) translateX(14px);width:min(370px,calc(100vw - 32px));
+  background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  box-shadow:0 18px 46px rgba(70,53,39,.2);opacity:0;pointer-events:none;
+  transition:opacity .28s,transform .28s}
+#card.on{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0)}
+#card .bar{height:4px;background:var(--ac)}
+#card .in{padding:20px 22px 22px}
+#card .kv{display:flex;align-items:baseline;gap:9px;padding:0 30px 7px 0;margin-bottom:12px;
+  border-bottom:1px solid var(--line);font-family:var(--fm);font-size:11.5px;color:#6d5b48}
+#card .kind{position:relative;padding-left:14px}
+#card .kind::before{content:"";position:absolute;left:0;top:.44em;width:8px;height:8px;
+  background:var(--ac);border-radius:1px}
+#card .yr{margin-left:auto;color:#8c7962}
+#card h2{font-family:var(--fd);margin:0;font-size:21.5px;line-height:1.2;letter-spacing:-.004em;font-weight:400}
+#card .who{font-family:var(--fb);font-style:italic;font-size:12.5px;color:var(--dim);margin-top:8px;line-height:1.45}
+#card p{margin:13px 0 0;font-size:14.5px;line-height:1.62;color:#53432f}
+#card a.go{display:inline-block;margin-top:16px;font-family:var(--fm);font-size:11.5px;font-weight:700;
+  color:#53432f;text-decoration:none;border-bottom:1.5px solid var(--ac);padding-bottom:2px}
+#card a.go:hover{background:rgba(70,53,39,.05)}
+#card .x{position:absolute;top:13px;right:13px;width:27px;height:27px;border-radius:50%;
+  background:rgba(70,53,39,.08);border:0;color:var(--ink);cursor:pointer;font-size:15px;line-height:1}
+#card .x:hover{background:rgba(70,53,39,.18)}
+#card .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+#card .row:last-child{border-bottom:0}
+#card .k{font-family:var(--fm);font-size:11px;color:#8c7962;min-width:72px;padding-top:2px}
+#card .row a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+#card .row a:hover{color:var(--ac);border-color:var(--ac)}
+
+/* the cellar hatch: breathing light, only alive on the closed house */
+#hatch{cursor:pointer}
+body.zoom #hatch{pointer-events:none}
+.hatchGlow{animation:breathe 3.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.72}50%{opacity:1}}
+#hatch:hover{filter:brightness(1.14)}
+#hatch:focus{outline:none}
+#hatch:focus-visible .hatchGlow{opacity:1}
+#hatch:focus-visible{filter:brightness(1.22)}
+.room.cellar{display:none}
+body.cellar-open .room.cellar{display:block}
+body.cellar-open #hatch{opacity:.35}
+
+/* ---- the dock: hop straight between rooms without backing out ---- */
+#dock{position:fixed;left:50%;bottom:clamp(14px,3vw,26px);transform:translate(-50%,12px);
+  z-index:22;display:flex;align-items:center;gap:13px;padding:10px 15px;border-radius:99px;
+  background:var(--card);border:1px solid var(--line);box-shadow:0 6px 20px rgba(70,53,39,.18);
+  opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+body.zoom #dock{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+#dock button{width:11px;height:11px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:var(--dc);opacity:.4;transition:opacity .18s,transform .18s,box-shadow .18s}
+#dock button:hover,#dock button:focus-visible{opacity:1;transform:scale(1.3);outline:none}
+#dock button.now{opacity:1;transform:scale(1.3);box-shadow:0 0 0 3.5px rgba(70,53,39,.13)}
+#dock .sep{width:1px;height:14px;background:var(--line);margin:0 1px}
+
+/* ---- the opening guide: what is where, and what to press ---- */
+#guide{position:fixed;z-index:26;left:clamp(14px,3vw,30px);top:50%;
+  transform:translateY(-50%) translateX(-14px);width:min(330px,calc(100vw - 32px));
+  background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  box-shadow:0 18px 46px rgba(70,53,39,.22);opacity:0;pointer-events:none;
+  transition:opacity .3s,transform .3s}
+#guide.on{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0)}
+#guide .in{padding:19px 20px 18px}
+#guide .eyebrow{font-family:var(--fm);font-size:11.5px;color:#8c7962}
+#guide h2{font-family:var(--fd);margin:6px 0 0;font-size:20.5px;font-weight:400;letter-spacing:-.004em;line-height:1.22}
+#guide .lede{margin:8px 0 0;font-size:13px;line-height:1.5;color:#5c4a39}
+#guide ul{list-style:none;margin:14px 0 0;padding:0;border-top:1px solid var(--line)}
+#guide li{border-bottom:1px solid var(--line)}
+#guide li button{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;
+  background:none;border:0;padding:9px 2px;cursor:pointer;font-family:var(--fb);color:var(--ink);
+  border-radius:7px;transition:background .15s}
+#guide li button:hover{background:rgba(70,53,39,.06)}
+#guide .d{width:9px;height:9px;border-radius:50%;background:var(--gc);flex:none;margin-top:4px}
+#guide .t{font-size:14px;font-weight:600;line-height:1.3;letter-spacing:-.005em}
+#guide .w{display:block;font-size:11.5px;font-weight:400;color:var(--dim);margin-top:2px;line-height:1.35}
+#guide .how{margin:13px 0 0;font-size:12px;line-height:1.52;color:var(--dim)}
+#guide .row2{display:flex;gap:8px;margin-top:14px;align-items:center}
+#guide .row2 a{font-family:var(--fm);font-size:11.5px;font-weight:700;color:var(--ink);
+  text-decoration:none;border-bottom:1.5px solid var(--line);padding-bottom:1px}
+#guide .row2 a:hover{border-color:var(--ink)}
+#guide .go{margin-left:auto;font-family:var(--fm);font-size:11.5px;font-weight:700;
+  background:var(--ink);color:var(--card);border:0;border-radius:99px;padding:8px 15px;cursor:pointer}
+#guide .go:hover{background:#2e2318}
+
+@media(max-width:880px){
+  #card{right:10px;left:10px;top:auto;bottom:10px;width:auto;transform:translateY(16px)}
+  #card.on{transform:translateY(0)}
+  #card{bottom:64px}
+  #dock{bottom:16px}
+  #guide{left:10px;right:10px;top:auto;bottom:10px;width:auto;transform:translateY(16px);
+    max-height:min(78vh,620px);overflow:auto}
+  #guide .in{padding:16px 17px 15px}
+  #guide li button{padding:7px 2px}
+  #guide .how{margin-top:11px}
+  #guide .row2{margin-top:11px}
+  #guide.on{transform:translateY(0)}
+  #cap{bottom:auto;top:16px;left:clamp(14px,3vw,30px)}
+  #cap b{font-size:22px}
+  #tip{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<svg id="scene" viewBox="0 0 1240 900" preserveAspectRatio="xMidYMid meet" aria-label="A dollhouse with five rooms"></svg>
+
+<div id="bar">
+  <div id="ident"><div class="nm" id="pName">Ina Klaric</div></div>
+  <span class="sp"></span>
+  <button class="btn" id="gBtn" aria-label="What is where">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h3M4 12h3M4 18h3M11 6h9M11 12h9M11 18h9"/></svg>
+  </button>
+  <button class="btn" id="cBtn" aria-label="Contact">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
+  </button>
+</div>
+
+<div id="cap"><i id="capTag"></i><b id="capName"></b><s>Click the glowing points · click outside to step back</s></div>
+<div id="tip"><i id="tipTag"></i><b id="tipName"></b></div>
+
+<div id="dock" role="group" aria-label="Jump to a room"></div>
+
+<div id="guide">
+  <div class="in">
+    <div class="eyebrow">Start here</div>
+    <h2 id="guideH"></h2>
+    <p class="lede" id="guideP"></p>
+    <ul id="guideList"></ul>
+    <p class="how">Click a room to go in, then the glowing points inside it. Click anywhere outside the room to come back out.</p>
+    <div class="row2" id="guideLinks"></div>
+  </div>
+</div>
+
+<div id="card">
+  <div class="bar" id="cardBar"></div>
+  <button class="x" id="cardX" aria-label="Close">×</button>
+  <div class="in" id="cardIn"></div>
+</div>
+
+<script>
+/* ===== dollhouse engine (inlined — this file is self-contained) ===== */
+/* ============================================================
+   dollhouse.js — a cottage dollhouse, open front, side elevation
+   Flat 2D: x right, y down. Every room draws in its own local
+   coordinate space with the floor line at (h - FLOOR).
+   ============================================================ */
+
+const n = v => Math.round(v*10)/10;
+const A = op => op!=null ? ` opacity="${op}"` : "";
+
+const R  = (x,y,w,h,f,rx,op)=>`<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" fill="${f}"${rx?` rx="${n(rx)}"`:""}${A(op)}/>`;
+const C  = (x,y,r,f,op)=>`<circle cx="${n(x)}" cy="${n(y)}" r="${n(r)}" fill="${f}"${A(op)}/>`;
+const E  = (x,y,rx,ry,f,op)=>`<ellipse cx="${n(x)}" cy="${n(y)}" rx="${n(rx)}" ry="${n(ry)}" fill="${f}"${A(op)}/>`;
+const PG = (p,f,op)=>`<polygon points="${p.map(q=>n(q[0])+","+n(q[1])).join(" ")}" fill="${f}"${A(op)}/>`;
+const PH = (d,f,s,w,op,extra)=>`<path d="${d}" fill="${f||"none"}"${s?` stroke="${s}" stroke-width="${w||1}" stroke-linecap="round" stroke-linejoin="round"`:""}${A(op)}${extra||""}/>`;
+const L  = (x1,y1,x2,y2,s,w,op)=>`<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(x2)}" y2="${n(y2)}" stroke="${s}" stroke-width="${w||1}" stroke-linecap="round"${A(op)}/>`;
+
+function sh(hex,amt){
+  const v=parseInt(hex.slice(1),16), r=(v>>16)&255, g=(v>>8)&255, b=v&255;
+  const f=c=>Math.max(0,Math.min(255,Math.round(amt>0?c+(255-c)*amt:c*(1+amt))));
+  return "#"+[f(r),f(g),f(b)].map(c=>c.toString(16).padStart(2,"0")).join("");
+}
+const hi=(x,y,w,h,o)=>R(x,y,w,h,"#ffffff",0,o==null?.18:o);
+const lo=(x,y,w,h,o)=>R(x,y,w,h,"#000000",0,o==null?.14:o);
+
+/* a shaded solid: light along the top, shadow along the bottom */
+function blk(x,y,w,h,hex,rx){
+  const t=Math.max(1.2,Math.min(3.5,h*.14)), b=Math.max(1.4,Math.min(4.5,h*.18));
+  return R(x,y,w,h,hex,rx)+hi(x,y,w,t,.16)+lo(x,y+h-b,w,b,.13);
+}
+/* contact shadow where a thing meets the floor */
+const cast=(x,y,rx,ry,o)=>`<ellipse cx="${n(x)}" cy="${n(y)}" rx="${n(rx)}" ry="${n(ry||3.2)}" fill="#3a2418" opacity="${o||.2}" filter="url(#soft)"/>`;
+
+/* ============================================================
+   WALL TREATMENTS
+   ============================================================ */
+/* small repeating botanical wallpaper */
+function paperDef(id,base,ink,kind){
+  let motif="";
+  if(kind==="sprig"){
+    motif = PH("M11,26 C11,18 14,13 19,9","",ink,1.3,.55)
+      + PH("M19,9 C15,10 12,13 12,17 C16,17 19,14 19,9Z",ink,"",0,.5)
+      + PH("M12,19 C9,17 6,17 4,19 C7,22 10,22 12,19Z",ink,"",0,.42)
+      + [[30,32],[38,40]].map(p=>
+          [0,72,144,216,288].map(a=>{
+            const rad=a*Math.PI/180;
+            return E(p[0]+Math.cos(rad)*3.4,p[1]+Math.sin(rad)*3.4,2.5,1.9,ink,.4);
+          }).join("")+C(p[0],p[1],1.5,ink,.62)).join("");
+  } else if(kind==="stripe"){
+    motif = R(0,0,5,48,ink,0,.16)+R(22,0,2.2,48,ink,0,.1)
+      + [[12,11],[35,33]].map(p=>C(p[0],p[1],1.7,ink,.3)+C(p[0]+4,p[1]+5,1.1,ink,.22)).join("");
+  } else if(kind==="check"){
+    motif = R(0,0,24,48,ink,0,.12)+R(0,0,48,24,ink,0,.12)+R(0,0,24,24,ink,0,.1);
+  } else if(kind==="steel"){
+    motif = R(1,1,46,46,ink,1.5,.12)
+      + R(0,0,48,1.6,ink,0,.42) + R(0,0,1.6,48,ink,0,.34)
+      + R(2,2,44,1.4,"#ffffff",0,.07)
+      + [[6,6],[42,6],[6,42],[42,42]].map(q=>C(q[0],q[1],1.7,ink,.55)
+          + C(q[0]-.5,q[1]-.5,.8,"#ffffff",.16)).join("");
+  } else if(kind==="brick"){
+    const row=(y,off)=>[-1,0,1,2].map(i=>R(off+i*25,y,23,11,ink,1,.17)).join("");
+    motif = row(1,0)+row(13,-12)+row(25,0)+row(37,-12);
+  } else { /* dot + leaf */
+    motif = [[10,12],[34,36]].map(p=>
+        PH(`M${p[0]},${p[1]} C${p[0]-6},${p[1]-3} ${p[0]-6},${p[1]-10} ${p[0]},${p[1]-12} C${p[0]+6},${p[1]-10} ${p[0]+6},${p[1]-3} ${p[0]},${p[1]}Z`,ink,"",0,.36)
+        + L(p[0],p[1],p[0],p[1]-11,ink,.9,.4)).join("")
+      + C(30,10,1.8,ink,.3)+C(12,38,1.8,ink,.3);
+  }
+  return `<pattern id="${id}" width="48" height="48" patternUnits="userSpaceOnUse">`
+    + R(0,0,48,48,base) + motif + `</pattern>`;
+}
+/* beadboard wainscot with a capping rail */
+function wainscot(w,y,h,col){
+  let s=R(0,y,w,h,col)+hi(0,y,w,2,.3);
+  for(let x=7;x<w;x+=11) s+=L(x,y+5,x,y+h,sh(col,-.2),1,.5);
+  s+=R(0,y,w,5,sh(col,.12))+R(0,y+3,w,2.2,sh(col,-.16))+lo(0,y+h-3,w,3,.1);
+  return s;
+}
+/* floorboards seen almost edge-on */
+function floorBoards(w,h,wood,seed){
+  const fy=h-FLOOR;
+  let s=R(0,fy,w,FLOOR,wood)+hi(0,fy,w,2.4,.22);
+  for(let x=((seed*13)%17)+9;x<w;x+=Math.max(26,w/9)) s+=L(x,fy+2.5,x-2,h,sh(wood,-.26),1.1,.55);
+  s+=R(0,fy,w,1.6,sh(wood,-.3))+lo(0,h-4,w,4,.16);
+  return s;
+}
+const beam=(w,col)=>blk(0,0,w,11,col)+lo(0,10,w,3,.18);
+
+/* ============================================================
+   FURNITURE — flat, front-facing, all sitting on a floor line
+   ============================================================ */
+function legs(x,w,fy,top,wood,thick){
+  const t=thick||5;
+  return blk(x+2,top,t,fy-top,sh(wood,-.12),1)+blk(x+w-t-2,top,t,fy-top,sh(wood,-.2),1);
+}
+function table(x,fy,w,h,wood){
+  const top=fy-h;
+  return cast(x+w/2,fy+1,w*.54,3.4)
+    + legs(x,w,fy,top+7,wood)
+    + blk(x-3,top,w+6,8,wood,1.5)
+    + R(x+4,top+8,w-8,3.5,sh(wood,-.22));
+}
+function desk(x,fy,w,h,wood,dr){
+  const top=fy-h;
+  let s=cast(x+w/2,fy+1,w*.56,3.6)
+    + blk(x+3,top+9,7,h-9,sh(wood,-.16),1) + blk(x+w-10,top+9,7,h-9,sh(wood,-.22),1)
+    + blk(x-3,top,w+6,9,wood,1.5);
+  if(dr!==false){
+    s+=blk(x+w*.42,top+11,w*.5,h*.46,sh(wood,-.05),1.5);
+    for(let i=0;i<2;i++){
+      const dy=top+14+i*(h*.46-8)/1.6;
+      s+=R(x+w*.45,dy,w*.44,1.4,sh(wood,-.3),0,.5)
+        + R(x+w*.62,dy+ (h*.46)/5,w*.1,2.6,sh(wood,.3),1.2);
+    }
+  }
+  return s;
+}
+function chair(x,fy,s,wood,back){
+  const w=22*s,seat=fy-22*s,bh=(back||30)*s;
+  let o=cast(x+w/2,fy+1,w*.6,3)
+    + blk(x+2,seat+3,4*s,fy-seat-3,sh(wood,-.18),1)
+    + blk(x+w-6*s,seat+3,4*s,fy-seat-3,sh(wood,-.26),1)
+    + blk(x,seat,w,5*s,wood,1.2);
+  o+=blk(x+1.5,seat-bh,3.5*s,bh,sh(wood,-.12),1)+blk(x+w-5*s,seat-bh,3.5*s,bh,sh(wood,-.2),1);
+  for(let i=1;i<4;i++) o+=blk(x+1.5+i*(w-5*s)/4,seat-bh+5*s,2.2*s,bh-7*s,sh(wood,-.06),1);
+  o+=blk(x,seat-bh,w,4.5*s,wood,1.6);
+  return o;
+}
+function bookRow(x,y,w,h,seed,pal){
+  let s="",cx=x,i=0;
+  while(cx<x+w-3){
+    const bw=4.5+((seed*(i+3))%5)*1.5, bh=h-((seed*(i+5))%4)*2.4;
+    s+=blk(cx,y+h-bh,bw,bh,pal[(i+seed)%pal.length],.8);
+    if(bw>6) s+=R(cx+1,y+h-bh+bh*.22,bw-2,1.1,"#ffffff",0,.3);
+    cx+=bw+.9; i++;
+  }
+  return s;
+}
+function jar(x,fy,s,tint){
+  return blk(x,fy-11*s,8*s,11*s,tint,1.5)+R(x+1.4*s,fy-9*s,5*s,6*s,"#ffffff",1,.22)
+    + blk(x+1,fy-13.5*s,6*s,3*s,sh(tint,-.3),1);
+}
+function shelfUnit(x,fy,w,h,wood,seed,pal){
+  const top=fy-h;
+  let s=cast(x+w/2,fy+1,w*.56,3.6)
+    + blk(x,top,w,h,sh(wood,-.3),2)
+    + R(x+4,top+4,w-8,h-8,sh(wood,-.45),1);
+  const rows=Math.max(2,Math.round(h/46));
+  for(let i=0;i<rows;i++){
+    const sy=top+6+(h-12)*(i+1)/rows;
+    s+=blk(x+4,sy-4,w-8,4.5,wood,.8);
+    if(i%3===2) s+=jar(x+10,sy-4,1,"#cbd8c6")+jar(x+24,sy-4,.85,"#e3cfae")+C(x+44,sy-12,6,"#7f9a6d",.9);
+    else s+=bookRow(x+8,sy-30,w-18,26,seed+i,pal);
+  }
+  s+=blk(x-3,top-5,w+6,6,wood,1.4);
+  return s;
+}
+function potPlant(x,fy,s,leaf,pot){
+  const p=pot||"#c07f57", pw=22*s, ph=18*s;
+  let o=cast(x,fy+1,pw*.72,3.4)
+    + PG([[x-pw/2,fy-ph],[x+pw/2,fy-ph],[x+pw/2-3*s,fy],[x-pw/2+3*s,fy]],p)
+    + R(x-pw/2,fy-ph,pw,4.5*s,sh(p,.14),1)
+    + lo(x-pw/2+3*s,fy-4*s,pw-6*s,4*s,.12);
+  const blobs=[[0,-ph-13*s,13*s],[-10*s,-ph-6*s,9*s],[10*s,-ph-7*s,9.5*s],[-4*s,-ph-22*s,8*s],[7*s,-ph-19*s,7*s]];
+  blobs.forEach((b,i)=>{ o+=E(x+b[0],fy+b[1],b[2],b[2]*.86,i%2?sh(leaf,.1):leaf,.96); });
+  o+=E(x-5*s,fy-ph-16*s,4.5*s,3.4*s,sh(leaf,.3),.55);
+  return o;
+}
+function hangPlant(x,cy,s,leaf){
+  let o=L(x,cy,x,cy+16*s,"#8a7358",1.2,.85)
+    + PG([[x-10*s,cy+16*s],[x+10*s,cy+16*s],[x+7*s,cy+28*s],[x-7*s,cy+28*s]],"#c07f57")
+    + R(x-10*s,cy+16*s,20*s,3.5*s,sh("#c07f57",.16));
+  for(let i=0;i<5;i++){
+    const dx=(i-2)*4.6*s, len=(16+((i*7)%18))*s;
+    o+=PH(`M${n(x+dx)},${n(cy+26*s)} q${n(dx*.5)},${n(len*.6)} ${n(dx*.3)},${n(len)}`,"",leaf,1.8*s,.9);
+    for(let k=1;k<=3;k++) o+=E(x+dx+dx*.3*k/3+(k%2?2.2:-2.2)*s, cy+26*s+len*k/3.4, 3.2*s,2.3*s, sh(leaf,k*.06),.92);
+  }
+  return o;
+}
+function rug(x,fy,w,cols){
+  let s=E(x+w/2,fy,w/2,6.5,sh(cols[0],-.3),.35);
+  s+=PG([[x,fy],[x+w,fy],[x+w-7,fy-7],[x+7,fy-7]],cols[0]);
+  for(let i=1;i<cols.length;i++){
+    const t=i/cols.length, iw=w*(1-t*.62);
+    s+=PG([[x+(w-iw)/2,fy-t*5.4],[x+(w+iw)/2,fy-t*5.4],[x+(w+iw)/2-4,fy-t*5.4-1.6],[x+(w-iw)/2+4,fy-t*5.4-1.6]],cols[i],.9);
+  }
+  return s;
+}
+function floorLamp(x,fy,h,shadeC){
+  const top=fy-h;
+  return cast(x,fy+1,15,3.4)
+    + E(x,fy-2,15,4,"#8a7358") + blk(x-2,top+22,4,h-24,"#9c8163",1)
+    + `<circle cx="${n(x)}" cy="${n(top+24)}" r="52" fill="url(#glow)" opacity=".85"/>`
+    + PG([[x-20,top+24],[x+20,top+24],[x+14,top],[x-14,top]],shadeC)
+    + R(x-20,top+21,40,4,sh(shadeC,-.18),1) + hi(x-14,top,28,3,.3)
+    + PG([[x-20,top+24],[x-9,top+24],[x-6,top],[x-14,top]],"#ffffff",.16);
+}
+function tableLamp(x,fy,s,shadeC){
+  return `<circle cx="${n(x)}" cy="${n(fy-20*s)}" r="${n(40*s)}" fill="url(#glow)" opacity=".8"/>`
+    + blk(x-3*s,fy-14*s,6*s,14*s,"#a8896a",1) + E(x,fy,9*s,3*s,"#8a7358")
+    + PG([[x-13*s,fy-14*s],[x+13*s,fy-14*s],[x+9*s,fy-28*s],[x-9*s,fy-28*s]],shadeC)
+    + R(x-13*s,fy-16*s,26*s,3*s,sh(shadeC,-.2),1);
+}
+/* arched window with a view, lace curtains and a sill */
+function windowArch(x,y,w,h,id){
+  const r=w/2, by=y+h;
+  const d=`M${n(x)},${n(by)} L${n(x)},${n(y+r)} A${n(r)},${n(r)} 0 0 1 ${n(x+w)},${n(y+r)} L${n(x+w)},${n(by)} Z`;
+  let s=PH(d,"#000000","",0,.14,` transform="translate(2.5,3)"`);
+  s+=PH(d,`url(#view-${id})`);
+  s+=PH(d,`url(#daylight)`);
+  // glazing bars
+  s+=L(x+w/2,y+3,x+w/2,by,"#f6efe2",3,.9);
+  s+=L(x+1,y+r+12,x+w-1,y+r+12,"#f6efe2",3,.9);
+  s+=L(x+1,y+r+12+(by-y-r-12)/2,x+w-1,y+r+12+(by-y-r-12)/2,"#f6efe2",2.4,.75);
+  // frame
+  s+=PH(d,"","#f2e8d8",7);
+  s+=PH(d,"","#d9c9b2",2.2,.7);
+  // lace valance
+  s+=PH(`M${n(x-3)},${n(y+r-4)} L${n(x+w+3)},${n(y+r-4)} L${n(x+w+3)},${n(y+r+7)} `
+      + Array.from({length:6},(_,i)=>`q${n(-w/12)},7 ${n(-w/6)},0`).join(" ") + "Z","#fbf6ec","",0,.92);
+  // side curtains
+  [[x-4,1],[x+w+4,-1]].forEach(c=>{
+    s+=PH(`M${n(c[0])},${n(y+r-6)} q${n(c[1]*13)},${n(h*.42)} ${n(c[1]*5)},${n(h*.72)} L${n(c[0])},${n(by+4)} Z`,"#e8ddc8");
+    s+=PH(`M${n(c[0])},${n(y+r-6)} q${n(c[1]*11)},${n(h*.42)} ${n(c[1]*4)},${n(h*.7)}`,"",sh("#e8ddc8",-.16),1.4,.7);
+  });
+  // sill
+  s+=blk(x-9,by,w+18,7,"#efe4d2",1.5)+lo(x-9,by+6,w+18,3,.14);
+  return s;
+}
+function frame(x,y,w,h,mat,inner){
+  return R(x+2.5,y+3,w,h,"#000000",1,.13)
+    + blk(x,y,w,h,mat,1.5) + R(x+5,y+5,w-10,h-10,"#fbf6ec",.8)
+    + inner(x+8,y+8,w-16,h-16);
+}
+function stringLights(x1,x2,y,dip,bulb){
+  const seg=(x2-x1)/7;
+  let d=`M${n(x1)},${n(y)}`, s="", bulbs=[];
+  for(let i=0;i<7;i++){
+    const a=x1+seg*i, b=a+seg;
+    d+=` Q${n((a+b)/2)},${n(y+dip)} ${n(b)},${n(y)}`;
+    bulbs.push([(a+b)/2,y+dip*.74]);
+  }
+  s+=PH(d,"","#8a7358",1.2,.85);
+  bulbs.forEach(b=>{ s+=C(b[0],b[1],7,bulb,.2)+C(b[0],b[1],2.8,bulb); });
+  return s;
+}
+function cat(x,fy,s,col){
+  return cast(x,fy+1,15*s,3)
+    + E(x,fy-6*s,15*s,7*s,col)
+    + PH(`M${n(x+13*s)},${n(fy-8*s)} q${n(9*s)},${n(-3*s)} ${n(5*s)},${n(-11*s)}`,"",col,3.4*s,.95)
+    + C(x-12*s,fy-14*s,7.5*s,col)
+    + PG([[x-17*s,fy-18*s],[x-13*s,fy-25*s],[x-10*s,fy-18*s]],col)
+    + PG([[x-9*s,fy-19*s],[x-5*s,fy-25*s],[x-3*s,fy-18*s]],col)
+    + L(x-15*s,fy-14*s,x-14*s,fy-14*s,"#3a2c26",1.6*s)
+    + L(x-9*s,fy-14*s,x-8*s,fy-14*s,"#3a2c26",1.6*s);
+}
+
+/* ============================================================
+   ROOMS
+   ============================================================ */
+const FLOOR=15;
+const K=0.70;   // the whole house is drawn at 84% — rooms keep their own coordinates
+const PAL_WARM=["#b3574c","#d09b45","#4a7fa3","#7d6aa8","#5f9a6f","#c9744a"];
+const PAL_SOFT=["#9cae8c","#c9a05f","#8fa8b8","#c08d84","#a89ab8","#b58a5e"];
+
+/* ------------------------------------------------------------
+   House frame: 1240 x 900.
+   Walls 200..1040 x 310..832.  Room openings 220..1020.
+   Attic 92..314 · upper floor 322..572 · lower floor 582..832
+   ------------------------------------------------------------ */
+const ROOMS=[
+/* ---------------- ATTIC — film ---------------- */
+{
+  id:"cut", name:"The Cutting Room", tag:"Film", accent:"#c9784a",
+  x:340, y:174, w:800, h:222, clip:[[400,24],[778,222],[22,222]],
+  paper:["#dcc7ac","#9c7554","dot"], wood:"#7d5b42", wain:"#b9a79c",
+  view:["#e0c69c","#f2dcb8"],
+  decor(w,h,a){
+    const fy=h-FLOOR;
+    return [
+      [0, floorBoards(w,h,this.wood,4)],
+      // rafters following the roof pitch, plus a collar tie
+      [1, PH("M22,222 L400,24","","#6b4f3a",9,.95)+PH("M400,24 L778,222","","#6b4f3a",9,.95)
+          + [[150,155],[250,104],[550,103],[650,155]].map(p=>
+              PH(`M${p[0]},${p[1]+4} L${p[0]},${fy}`,"","#8a6648",6,.42)).join("")
+          + R(286,126,228,8,"#7d5b42",1,.6)],
+      // oculus at the apex
+      [2, C(400,52,25,"#f2e6cf")+C(400,52,20,"url(#view-cut)")+C(400,52,20,"url(#daylight)")
+          + L(380,52,420,52,"#f2e6cf",3) + L(400,32,400,72,"#f2e6cf",3)
+          + PH("M375,52 A25,25 0 0 1 425,52","","#e0cfb4",2.4,.7)],
+      [40, rug(300,fy,190,["#7b5a52","#a3786a","#c9a58c"])],
+      [41, potPlant(652,fy,.84,"#6f8f5c")],
+      [42, cat(692,fy,.74,"#5a4a44")],
+      [70, tableLamp(376,fy-54,.74,"#f0dcb4")]
+    ];
+  },
+  objects:[
+    { label:"Posters", z:20, mk:[404,86],
+      draw(w,h,a){
+        return frame(352,60,46,52,"#7d5b42",(x,y,ww,hh)=>
+            R(x,y,ww,hh,sh(a,-.2))+C(x+ww/2,y+hh*.34,ww*.26,sh(a,.4),.9)
+            +R(x+4,y+hh*.66,ww-8,4,"#f2e6cf",0,.8)+R(x+4,y+hh*.78,ww*.55,3,"#f2e6cf",0,.55))
+          + frame(406,54,48,58,"#7d5b42",(x,y,ww,hh)=>
+            R(x,y,ww,hh,"#6f5a6b")+PG([[x,y+hh],[x+ww*.45,y+hh*.3],[x+ww,y+hh]],sh(a,.1),.9)
+            +C(x+ww*.72,y+hh*.28,ww*.14,"#f2e6cf",.8)); },
+      e:{kind:"Role",yr:"2019 – 2021",h:"Assistant & Casting Producer",
+         who:"Blank d.o.o, Zagreb",
+         p:"Production and casting on commercial shoots. Two years of reading people fast and keeping a schedule alive on set."} },
+    { label:"Reel shelf", z:30, mk:[225,174],
+      draw(w,h,a){ const x=182;
+        let s=blk(x,186,90,7,"#7d5b42",1)+lo(x,192,90,3,.16)
+          + L(x+12,193,x+12,207,"#7d5b42",3.4,.75)
+          + L(x+78,193,x+78,207,"#7d5b42",3.4,.75);
+        [[x+23,173],[x+49,173],[x+75,173]].forEach(r=>{
+          s+=C(r[0],r[1],13,"#cfc0ad")+C(r[0],r[1],8.5,"#b5a692")
+            +C(r[0],r[1],3.4,"#7d5b42")+C(r[0]-3.5,r[1]-4,4.5,"#ffffff",.16);
+        });
+        return s; },
+      e:{kind:"Study",yr:"2023",h:"Minor in Film",
+         who:"Monash University Malaysia",
+         p:"Taken alongside the exchange semester in cognitive science."} },
+    { label:"Edit table", z:50, mk:[320,180],
+      draw(w,h,a){ const fy=h-FLOOR, x=252, tw=140;
+        return desk(x,fy,tw,54,"#8a6448")
+          + chair(x+14,fy,.92,"#7d5b42",26)
+          + blk(x+12,fy-84,50,30,"#2f2a2c",2)+R(x+15,fy-81,44,24,sh(a,-.22),1)
+          +R(x+17,fy-79,19,3,sh(a,.42),1,.8)+R(x+17,fy-72,30,2.4,sh(a,.3),1,.6)
+          + blk(x+70,fy-80,48,28,"#2f2a2c",2)+R(x+73,fy-77,42,22,sh(a,-.05),1)
+          +R(x+75,fy-74,25,3,"#ffffff",1,.4)
+          + blk(x+18,fy-56,62,5,"#3a3336",1)
+          + blk(x+88,fy-56,14,5,"#3a3336",1); },
+      e:{kind:"Documentary",yr:"",h:"Home away from home",
+         p:"A documentary short on the discrimination faced by the Borneo community in Malaysia, made during the exchange semester it's about."} },
+    { label:"Projector", z:52, mk:[510,160],
+      draw(w,h,a){ const fy=h-FLOOR, x=486;
+        return cast(x+20,fy+1,26,3.4)
+          + blk(x+16,fy-60,8,60,"#6b5b52",1)
+          + L(x+4,fy,x+20,fy-56,"#6b5b52",4) + L(x+36,fy,x+20,fy-56,"#6b5b52",4)
+          + blk(x,fy-89,42,26,"#4a4045",2) + hi(x,fy-89,42,3,.2)
+          + C(x+40,fy-76,7.5,"#2e282c") + C(x+40,fy-76,4.6,sh(a,.3),.95)
+          + C(x+10,fy-95,6.5,"#d8cdbe") + C(x+24,fy-95,6.5,"#d8cdbe")
+          + C(x+10,fy-95,2.2,"#4a4045") + C(x+24,fy-95,2.2,"#4a4045")
+          + PG([[x+46,fy-81],[x+150,fy-108],[x+150,fy-44],[x+46,fy-71]],"#fff3d4",.13); },
+      e:{kind:"Shorts",yr:"",h:"Ema i Lena · Klinka · Brod u boci",
+         p:"Three independent short films."} },
+    { label:"Director's chair", z:54, mk:[578,166],
+      draw(w,h,a){ const fy=h-FLOOR, x=540;
+        return cast(x+30,fy+1,34,3.6)
+          + L(x+6,fy,x+54,142,"#6b5b52",5) + L(x+54,fy,x+6,142,"#6b5b52",5)
+          + L(x+6,fy,x+6,170,"#6b5b52",5) + L(x+54,fy,x+54,170,"#6b5b52",5)
+          + blk(x+2,166,56,9,sh(a,-.3),1.5)
+          + blk(x+2,137,56,13,sh(a,-.18),1.5)
+          + R(x+6,140,48,2.4,"#f2e6cf",0,.45)
+          // clapperboard leaning against the leg
+          + blk(x+62,176,40,28,"#2f2a2c",1.5)
+          + PG([[x+62,176],[x+102,176],[x+104,166],[x+64,166]],"#3c3539")
+          + [0,1,2,3].map(i=>PG([[x+64+i*10,166],[x+69+i*10,166],[x+71+i*10,174],[x+66+i*10,174]],
+              i%2?"#e8e0d2":"#3c3539")).join("")
+          + R(x+66,184,32,2,"#d8cdbe",0,.6) + R(x+66,191,22,2,"#d8cdbe",0,.45); },
+      e:{kind:"About",yr:"",h:"A creative first",
+         who:"her own words, from the CV",
+         p:"Multidisciplinary AI master's student, equally driven by logic and creativity. The work keeps circling where human cognition meets human expression, and how algorithms can challenge and collaborate with creative processes."} }
+  ]
+},
+
+/* ---------------- UPPER LEFT — research ---------------- */
+{
+  id:"study", name:"The Study", tag:"Research", accent:"#5f8f6f",
+  x:338, y:341, w:395, h:250, clip:null,
+  paper:["#c9d3bd","#6f8a63","sprig"], wood:"#8a6448", wain:"#eae0cd",
+  view:["#a8c4a0","#cfdcc0"],
+  decor(w,h,a){
+    const fy=h-FLOOR;
+    return [
+      [0, floorBoards(w,h,this.wood,2)],
+      [1, wainscot(w,h-FLOOR-58,58,this.wain)],
+      [2, beam(w,"#7d5b42")],
+      [3, windowArch(318,72,70,100,"study")],
+      [4, potPlant(353,172,.5,"#6f8f5c","#cfc0a8")],
+      [30, rug(118,fy,152,["#7d6a78","#9c8598","#c4b0bd"])],
+      [31, potPlant(370,fy,.78,"#5f8f5c")],
+      [70, floorLamp(286,fy,118,"#f2dcae")]
+    ];
+  },
+  objects:[
+    { label:"Bookcase", z:20, mk:[60,112],
+      draw(w,h,a){ return shelfUnit(14,h-FLOOR,92,170,"#8a6448",3,PAL_WARM); },
+      e:{kind:"Paper",yr:"2025",h:"[RE] GNNBoundary: Finding Boundaries and Going Beyond Them",
+         who:"Bertrand, Bierling, Klaric & Wezenberg · Transactions on Machine Learning Research",
+         p:"Reproduced a model-level GNN explainability method and extended it to datasets the original never covered. Presented at the ML Reproducibility Challenge, Princeton.",
+         href:"https://openreview.net/", link:"OpenReview"} },
+    { label:"Master's diploma", z:16, mk:[53,33],
+      draw(w,h,a){
+        return frame(18,10,70,46,"#b08d4e",(x,y,ww,hh)=>
+          R(x,y,ww,hh,"#fbf6ec")
+          + R(x+ww*.16,y+hh*.22,ww*.68,2.8,"#7d6a58",0,.82)
+          + R(x+ww*.24,y+hh*.44,ww*.52,2,"#a89684",0,.75)
+          + R(x+ww*.24,y+hh*.6,ww*.52,2,"#a89684",0,.75)
+          + C(x+ww*.5,y+hh*.82,4.6,a,.85)); },
+      e:{kind:"Degree",yr:"2024 – 2026",h:"MSc Artificial Intelligence",
+         who:"University of Amsterdam",
+         p:"Machine learning, deep learning and NLP. The three papers from it are on the shelf below."} },
+    { label:"Pinboard", z:15, mk:[173,51],
+      draw(w,h,a){
+        return frame(124,18,98,66,"#8a6448",(x,y,ww,hh)=>{
+          let s=R(x,y,ww,hh,"#e8d9bb");
+          s+=R(x+6,y+6,28,19,"#fbf6ec",1)+R(x+38,y+8,23,16,sh(a,.3),1,.85)
+            +R(x+66,y+5,22,20,"#f0d9c4",1)+R(x+9,y+30,34,15,"#fbf6ec",1)
+            +R(x+49,y+31,37,14,sh(a,-.05),1,.8);
+          s+=[[20,6],[49,8],[77,5],[26,30],[67,31]].map(p=>C(x+p[0],y+p[1],2.1,"#b3574c")).join("");
+          return s; }); },
+      e:{kind:"Paper",yr:"2026",h:"What Makes Linguistic Representations Good Models of High-Level Visual Perception in the Human Brain?",
+         who:"Bavaresco, Klaric, Fernández & Moens",
+         p:"Which properties of a language model's representations actually predict activity in high-level visual cortex, and which only appear to.",
+         href:"https://arxiv.org/abs/2607.16214", link:"arXiv:2607.16214"} },
+    { label:"Bachelor's diploma", z:17, mk:[275,35],
+      draw(w,h,a){
+        return frame(240,12,70,46,"#9c7a4e",(x,y,ww,hh)=>
+          R(x,y,ww,hh,"#f8f2e4")
+          + R(x+ww*.16,y+hh*.22,ww*.68,2.8,"#7d6a58",0,.82)
+          + R(x+ww*.24,y+hh*.44,ww*.52,2,"#a89684",0,.75)
+          + R(x+ww*.24,y+hh*.6,ww*.52,2,"#a89684",0,.75)
+          + C(x+ww*.5,y+hh*.82,4.6,"#b5793e",.8)); },
+      e:{kind:"Degree",yr:"2021 – 2024",h:"BSc Cognitive Science & Artificial Intelligence",
+         who:"Tilburg University",
+         p:"Where the AI started, alongside psychology, linguistics and philosophy of mind. Two of those years were also spent teaching it."} },
+    { label:"Desk", z:40, mk:[186,190],
+      draw(w,h,a){ const fy=h-FLOOR, x=132, tw=106;
+        return desk(x,fy,tw,56,"#9c7150")
+          + chair(x+10,fy,.9,"#8a6448",28)
+          + blk(x+30,fy-88,46,29,"#3a3336",2) + R(x+33,fy-85,40,23,sh(a,-.1),1)
+          + R(x+35,fy-82,19,2.8,sh(a,.45),1,.85) + R(x+35,fy-76,27,2.2,sh(a,.32),1,.6)
+          + blk(x+46,fy-60,12,4,"#3a3336",1)
+          + blk(x+30,fy-64,34,4,"#efe6d6",1)
+          + blk(x+6,fy-66,18,10,"#fbf6ec",1) + R(x+9,fy-64,12,1.4,"#b5a692",0,.7)
+          + jar(x+86,fy-56,.68,"#cbd8c6"); },
+      e:{kind:"Paper",yr:"2026",h:"The Powerless Noise",
+         who:"Mazuryk, Dolmans, Gehringer, Klaric, Ju & Aliannejadi · SIGIR 2026 Reproducibility Track",
+         p:"A published result said random documents improve retrieval-augmented answers. We rebuilt the experiments and traced how much of the effect came from the setup rather than the noise.",
+         href:"https://arxiv.org/abs/2607.03615", link:"arXiv:2607.03615"} }
+  ]
+},
+
+/* ---------------- UPPER RIGHT — places ---------------- */
+{
+  id:"away", name:"The Departures Board", tag:"Places", accent:"#d99a3e",
+  x:625, y:341, w:395, h:250, clip:null,
+  paper:["#e0cba4","#a87f4a","stripe"], wood:"#a8794e", wain:"#f0e4cd",
+  view:["#b9ceda","#e8dcc4"],
+  decor(w,h,a){
+    const fy=h-FLOOR;
+    return [
+      [0, floorBoards(w,h,this.wood,6)],
+      [1, wainscot(w,h-FLOOR-54,54,this.wain)],
+      [2, beam(w,"#8a6a48")],
+      [4, stringLights(146,276,18,14,"#ffd79a")],
+      [5, [[152,40],[190,33],[228,42],[172,70],[212,68],[250,36]].map((p,i)=>
+            R(p[0],p[1],27,20,"#fbf6ec",1.2,1)
+            + R(p[0]+2.5,p[1]+2.5,22,15,["#8fb0c4","#c9a05f","#8aa87c","#c9877a","#a89ab8","#b58a5e"][i],.8)).join("")],
+      [30, rug(104,fy,150,["#8a7448","#a89060","#c4ae83"])],
+      [31, potPlant(362,fy,.8,"#6f8f5c")],
+      [70, tableLamp(62,fy-48,.58,"#f2dcae")]
+    ];
+  },
+  objects:[
+    { label:"Map", z:14, mk:[73,62],
+      draw(w,h,a){
+        return frame(16,24,114,76,"#7a6a4e",(x,y,ww,hh)=>{
+          let s=R(x,y,ww,hh,"#efe4cc");
+          s+=PH(`M${n(x+10)},${n(y+hh*.62)} q12,-18 30,-14 q18,4 16,16 q-4,14 -21,15 q-20,1 -25,-17Z`,"#bdcdab","",0,.9);
+          s+=PH(`M${n(x+58)},${n(y+hh*.32)} q14,-10 26,0 q7,12 -5,17 q-16,5 -21,-17Z`,"#cdd9b8","",0,.85);
+          s+=PH(`M${n(x+8)},${n(y+hh*.3)} q20,11 34,2 q16,-10 30,2`,"","#b5a17c",1.3,.75,` stroke-dasharray="4 3"`);
+          s+=[[26,.62],[58,.4],[78,.72]].map(m=>C(x+m[0],y+hh*m[1],3.6,a)).join("");
+          return s; }); },
+      e:{kind:"Lived",yr:"2021 – 2024",h:"Tilburg, Netherlands",
+         p:"Three years in North Brabant: the bachelor, two years of teaching it, and founding ENIGMA."} },
+    { label:"Suitcases", z:40, mk:[112,196],
+      draw(w,h,a){ const fy=h-FLOOR;
+        let s=cast(112,fy+1,66,4.4,.26);
+        s+=blk(66,fy-36,92,36,"#8f5c3a",2.5)+R(69,fy-33,86,3,sh("#8f5c3a",.2),0,.5)
+          +R(86,fy-36,10,36,sh(a,-.16))+R(128,fy-36,10,36,sh(a,-.16))
+          +R(86,fy-23,10,8,"#e0cfa2",1)+R(128,fy-23,10,8,"#e0cfa2",1)
+          +blk(100,fy-42,24,7,"#5e3a24",2);
+        s+=blk(74,fy-66,76,30,"#7a5a3c",2.5)+R(77,fy-63,70,3,sh("#7a5a3c",.2),0,.5)
+          +R(90,fy-66,8,30,sh(a,-.28))+R(126,fy-66,8,30,sh(a,-.28))
+          +blk(102,fy-71,18,6,"#4e3a26",2)
+          +R(80,fy-60,15,11,"#c9744a",1.5,.92)+R(134,fy-58,11,10,"#6fa8a0",1.5,.92);
+        s+=blk(82,fy-88,58,22,"#9c7150",2)+R(85,fy-85,52,2.6,sh("#9c7150",.2),0,.5)
+          +R(102,fy-93,15,6,"#5e3a24",1.5)
+          +R(88,fy-84,13,9,"#d4a24a",1.2,.9);
+        return s; },
+      e:{kind:"Now",yr:"2024 – 2026",h:"Amsterdam, Netherlands",
+         p:"MSc at the University of Amsterdam, and Robeco."} },
+    { label:"Globe", z:42, mk:[235,170],
+      draw(w,h,a){ const fy=h-FLOOR, x=235;
+        return table(x-34,fy,68,50,"#9c7150")
+          + E(x,fy-50,13,4,"#8a6a48") + blk(x-2.5,fy-64,5,14,"#a8794e",1)
+          + `<circle cx="${n(x)}" cy="${n(fy-88)}" r="26" fill="none" stroke="#b08d4e" stroke-width="3"/>`
+          + C(x,fy-88,23,"#4f8aa8")
+          + PH(`M${n(x-14)},${n(fy-94)} q9,-10 17,-2 q-4,11 -17,2Z`,"#6ea45f","",0,.92)
+          + PH(`M${n(x-2)},${n(fy-80)} q11,-5 15,4 q-9,8 -15,-4Z`,"#6ea45f","",0,.88)
+          + PH(`M${n(x+7)},${n(fy-100)} q7,-3 9,3 q-6,4 -9,-3Z`,"#7cb06c","",0,.8)
+          + C(x,fy-88,23,"url(#globeShade)")
+          + jar(x+18,fy-50,.6,"#cbd8c6"); },
+      e:{kind:"Exchange",yr:"2023",h:"Monash University, Malaysia",
+         p:"Exchange semester, GPA 8.5/10, plus the film minor. The documentary came out of being there."} },
+    { label:"Window", z:10, mk:[333,86],
+      draw(w,h,a){ return windowArch(292,34,82,112,"away"); },
+      e:{kind:"From",yr:"",h:"Zagreb, Croatia",
+         p:"Where the film work and the first job both started."} },
+    { label:"Phrasebooks", z:44, mk:[34,166],
+      draw(w,h,a){ const fy=h-FLOOR, x=8;
+        return table(x,fy,64,48,"#9c7150")
+          + blk(x+8,fy-62,44,14,"#b3574c",1.5) + R(x+11,fy-59,38,2,"#f2e6cf",0,.55)
+          + blk(x+6,fy-76,48,14,"#4a7fa3",1.5) + R(x+9,fy-73,42,2,"#f2e6cf",0,.55)
+          + blk(x+10,fy-89,40,13,"#d09b45",1.5) + R(x+13,fy-86,34,2,"#f2e6cf",0,.55); },
+      e:{kind:"Languages",yr:"",h:"Croatian · English · Spanish",
+         p:"Croatian native, English fluent, Spanish conversational, with a bachelor, an exchange and a master's across three countries to go with them."} },
+    { label:"Volleyball", z:46, mk:[300,206],
+      draw(w,h,a){ const fy=h-FLOOR, r=20, cx=300, cy=fy-r;
+        return cast(cx,fy,r*.95,r*.3,.26)
+          + C(cx,cy,r,"#f7f3e9")
+          // two tinted panels hugging opposite rims
+          + PH(`M${n(cx-r)},${n(cy)} A${r},${r} 0 0 1 ${n(cx)},${n(cy-r)} `
+             + `Q${n(cx-r*.44)},${n(cy-r*.44)} ${n(cx-r)},${n(cy)}Z`,"#5f8fc0")
+          + PH(`M${n(cx+r)},${n(cy)} A${r},${r} 0 0 1 ${n(cx)},${n(cy+r)} `
+             + `Q${n(cx+r*.44)},${n(cy+r*.44)} ${n(cx+r)},${n(cy)}Z`,"#e2b24a")
+          // seams running across the middle panel
+          + PH(`M${n(cx-r*.93)},${n(cy+r*.36)} Q${n(cx)},${n(cy-r*.12)} ${n(cx+r*.93)},${n(cy-r*.36)}`,
+               "","#c9c2b2",1.5,.9)
+          + PH(`M${n(cx-r*.74)},${n(cy+r*.66)} Q${n(cx)},${n(cy+r*.16)} ${n(cx+r*.74)},${n(cy-r*.66)}`,
+               "","#c9c2b2",1.5,.75)
+          + C(cx,cy,r,"url(#globeShade)")
+          + C(cx-r*.34,cy-r*.38,r*.2,"#ffffff",.5); },
+      e:{kind:"Off the clock",yr:"4 years",h:"Volleyball",
+         p:"Four years playing volleyball. The one fixture in the week that has nothing to do with a screen."} },
+    { label:"Old CRT", z:45, mk:[180,214],
+      draw(w,h,a){ const fy=h-FLOOR, x=158;
+        return cast(x+22,fy+1,27,4)
+          // a crate for it to sit on
+          + blk(x+4,fy-22,36,22,"#8a6a48",2)
+          + R(x+8,fy-18,28,2,sh("#8a6a48",-.3),0,.6)
+          + R(x+8,fy-8,28,2,sh("#8a6a48",-.3),0,.5)
+          // chunky beige monitor
+          + blk(x,fy-59,44,37,"#d8cdb8",3)
+          + blk(x+3,fy-56,38,29,"#2f3338",2)
+          + R(x+5,fy-54,34,25,"#17262c",1)
+          // on screen: this house, which is the whole joke
+          + PG([[x+22,fy-50],[x+34,fy-42],[x+10,fy-42]],"#b07a5e")
+          + R(x+14,fy-42,16,10,"#f2e8d4")
+          + R(x+16.5,fy-39.5,4,4,"#8fd4e2",.85) + R(x+23.5,fy-39.5,4,4,"#8fd4e2",.85)
+          + R(x+7,fy-32,30,2.4,"#5f9a6f",.9)
+          + PG([[x+28,fy-35],[x+32,fy-31],[x+29.5,fy-31],[x+28,fy-28]],"#f2e8d4",.9)
+          + R(x+5,fy-54,34,25,"url(#daylight)")
+          // bezel details
+          + C(x+38,fy-25,1.7,"#5fd99a",.95)
+          + R(x+6,fy-26,14,2,"#b8ad98",1,.8); },
+      e:{kind:"Off the clock",yr:"",h:"An avid Sims player",
+         p:"Enough hours spent building houses in The Sims that this website eventually became one. The open facade, and poking through a life one room at a time, are a straight nod to it."} }
+  ]
+},
+
+/* ---------------- LOWER LEFT — work & teaching ---------------- */
+{
+  id:"work", name:"The Workroom", tag:"Work & teaching", accent:"#4f93a8",
+  x:338, y:528, w:395, h:250, clip:null,
+  paper:["#dce4de","#8aa39c","check"], wood:"#b08a5e", wain:"#f5f0e6",
+  view:["#c4d8dc","#e8ece6"],
+  decor(w,h,a){
+    const fy=h-FLOOR;
+    return [
+      [0, floorBoards(w,h,this.wood,8)],
+      [1, wainscot(w,h-FLOOR-56,56,this.wain)],
+      [2, beam(w,"#8a6a48")],
+      [3, C(50,44,16,"#f2ece2")+C(50,44,13.6,"#fbf6ec")
+          + L(50,44,50,35,"#5a4a3c",1.7) + L(50,44,56,47,"#5a4a3c",1.4)
+          + `<circle cx="50" cy="44" r="16" fill="none" stroke="#a8905f" stroke-width="2.3"/>`],
+      [4, hangPlant(212,11,.6,"#6f9464")],
+      [30, rug(96,fy,124,["#6b7d86","#8b9ba2","#b2bec2"])],
+      [31, potPlant(214,fy,.62,"#5f8f5c","#c9a88c")],
+      [60, potPlant(382,fy,.72,"#6f9464")]
+    ];
+  },
+  objects:[
+    { label:"Cabinet", z:20, mk:[48,142],
+      draw(w,h,a){ const fy=h-FLOOR, x=12, cw=72, ch=118, top=fy-ch;
+        let s=cast(x+cw/2,fy+1,cw*.56,3.6)+blk(x,top,cw,ch,"#dfe2e0",2);
+        for(let i=0;i<3;i++){
+          const dy=top+8+i*((ch-14)/3);
+          s+=blk(x+5,dy,cw-10,(ch-14)/3-6,"#eef0ee",1.5)
+            +R(x+cw/2-10,dy+((ch-14)/3-6)/2-2,20,4,"#9aa2a4",1.6);
+        }
+        s+=blk(x-3,top-7,cw+6,8,"#cfd4d2",1.5)
+          + potPlant(x+22,top-7,.4,"#6f9464","#c9a88c")
+          + blk(x+42,top-19,22,12,"#fbf6ec",1)+R(x+45,top-16,16,1.6,"#a8a094",0,.7);
+        return s; },
+      e:{kind:"Earlier",yr:"2020 – 2021",h:"Programming Department Assistant",
+         who:"Undabot, Zagreb",
+         p:"Technical recruitment of developers, website work, and competitor research feeding product strategy."} },
+    { label:"Desk", z:40, mk:[150,188],
+      draw(w,h,a){ const fy=h-FLOOR, x=96, tw=110;
+        return desk(x,fy,tw,58,"#c2a077")
+          + chair(x+12,fy,.92,"#8a7d6a",28)
+          + blk(x+34,fy-92,50,31,"#33383c",2) + R(x+37,fy-89,44,25,sh(a,-.08),1)
+          + R(x+39,fy-86,22,3,sh(a,.5),1,.9) + R(x+39,fy-79,30,2.4,sh(a,.36),1,.65)
+          + R(x+39,fy-73,16,2.4,sh(a,.36),1,.5)
+          + blk(x+52,fy-61,12,3.5,"#33383c",1)
+          + blk(x+36,fy-64,32,4,"#e8e2d6",1)
+          + blk(x+6,fy-68,20,12,"#fbf6ec",1)+R(x+9,fy-65,14,1.4,"#a8a094",0,.7)
+          + jar(x+90,fy-58,.62,"#cdd7dc"); },
+      e:{kind:"Current",yr:"2025 – now",h:"Data Science & Engineering",
+         who:"Robeco, Amsterdam",
+         p:"ETL pipelines that ingest and structure financial reports, NLP models that tag unstructured documents, and semantic search over internal repositories."} },
+    { label:"Blackboard", z:14, mk:[295,60],
+      draw(w,h,a){
+        const x=222,y=24,bw=146,bh=76;
+        let s=R(x+3,y+3.5,bw,bh,"#000000",2,.15)
+          + blk(x,y,bw,bh,"#8a6a48",2) + R(x+6,y+6,bw-12,bh-12,"#3f4a42",1)
+          + R(x+6,y+6,bw-12,bh-12,"#ffffff",1,.05);
+        s+=R(x+14,y+18,58,2.4,"#e8e2d0",0,.8)+R(x+14,y+28,80,2,"#e8e2d0",0,.6)
+          +R(x+14,y+38,48,2,"#e8e2d0",0,.55)
+          +R(x+102,y+20,28,2.2,sh(a,.5),0,.7)+R(x+102,y+30,22,2,sh(a,.5),0,.55);
+        s+=PH(`M${x+14},${y+56} q15,-12 30,-2 q13,10 28,-6`,"","#e8e2d0",1.8,.5);
+        s+=blk(x+2,y+bh-4,bw-4,5,"#9c7a56",1)
+          +R(x+16,y+bh-7,10,3,"#fbf6ec",1)+R(x+30,y+bh-7,7,3,sh(a,.4),1);
+        return s; },
+      e:{kind:"Teaching",yr:"2022 – 2024",h:"Teaching Assistant",
+         who:"Tilburg University · Intro to Machine Learning, Intro to AI",
+         p:"Wrote the coding assignments on supervised learning, neural networks and search for cohorts of 50+, produced the material, and graded code and essays across two years."} },
+    { label:"Student desks", z:42, mk:[300,206],
+      draw(w,h,a){ const fy=h-FLOOR;
+        return [232,308].map(d=>
+            table(d,fy,66,50,"#b08a5e")
+            + chair(d+20,fy,.78,"#9c7150",24)
+            + blk(d+8,fy-56,24,4,"#fbf6ec",1)
+            + blk(d+38,fy-58,14,6,sh(a,.18),1)).join("")
+          + blk(378,fy-40,14,40,"#9c7150",1.5)
+          + bookRow(380,fy-62,10,22,4,PAL_SOFT); },
+      e:{kind:"Founded",yr:"2021 – 2023",h:"ENIGMA — founder & initial board member",
+         p:"Co-founded a study association from nothing: governance, and a calendar of events across the AI and cognitive science programmes."} },
+    { label:"Toolkit shelf", z:16, mk:[150,62],
+      draw(w,h,a){ const x=98,y=28,sw=104;
+        let s=R(x+2.5,y+3,sw,70,"#000000",1.5,.13)
+          + blk(x,y,sw,70,"#9c7a56",1.5) + R(x+4,y+4,sw-8,62,sh("#9c7a56",-.42),1);
+        [y+32,y+64].forEach(sy=>s+=blk(x+4,sy-4,sw-8,4.5,"#b08a5e",.8));
+        // labelled boxes and jars on the two shelves
+        s+=blk(x+9,y+10,20,18,"#4a7fa3",1.2)+R(x+12,y+14,14,2,"#f2efe6",0,.7)
+          +blk(x+33,y+13,17,15,"#b3574c",1.2)+R(x+36,y+17,11,2,"#f2efe6",0,.7)
+          +blk(x+54,y+8,22,20,"#5f9a6f",1.2)+R(x+58,y+13,14,2,"#f2efe6",0,.7)
+          +jar(x+82,y+28,.72,"#cdd7dc");
+        s+=blk(x+9,y+44,18,16,"#d09b45",1.2)+R(x+12,y+48,12,2,"#f2efe6",0,.7)
+          +blk(x+31,y+41,23,19,"#7d6aa8",1.2)+R(x+35,y+46,15,2,"#f2efe6",0,.7)
+          +blk(x+58,y+46,16,14,"#4a7fa3",1.2)
+          +jar(x+80,y+60,.66,"#e3cfae");
+        return s; },
+      e:{kind:"Toolkit",yr:"",h:"Python · R · C#",
+         p:"PyTorch, TensorFlow and scikit-learn for the modelling. The specialisms the CV names: NLP, semantic search and embeddings, statistical analysis, data pipelines and ETL, and reproducible research."} }
+  ]
+},
+
+/* ---------------- LOWER RIGHT — theatre ---------------- */
+{
+  id:"stage", name:"The Stage", tag:"Theatre", accent:"#c25d78",
+  x:625, y:528, w:395, h:250, clip:null,
+  paper:["#a37183","#6b4553","stripe"], wood:"#7d5342", wain:"#b58a96",
+  view:["#8a6a7c","#c4a0ac"],
+  decor(w,h,a){
+    return [
+      [0, floorBoards(w,h,this.wood,9)],
+      [1, beam(w,"#6b4f3a")],
+      // backdrop behind the stage
+      [2, R(48,42,300,108,sh(a,-.46))
+          + Array.from({length:12},(_,i)=>
+              L(56+i*25,44,56+i*25,148,sh(a,i%2?-.56:-.34),7,.5)).join("")
+          + R(48,42,300,108,"url(#roomLight)")],
+      // lighting bar
+      [3, R(0,11,w,11,"#5e3a48")
+          + [54,122,190,258,322].map(x=>blk(x,22,18,12,"#463040",1.5)
+              + C(x+9,40,22,"url(#glow)",.55)).join("")],
+      [60, (()=>{ const fy=h-FLOOR, x=12;
+          return cast(x+26,fy+1,30,3.4)
+            + blk(x,fy-34,54,34,"#7a5342",2) + blk(x-2,fy-40,58,8,"#8a6450",2)
+            + R(x+6,fy-34,6,34,sh(a,-.3)) + R(x+38,fy-34,6,34,sh(a,-.3))
+            + R(x+22,fy-24,11,7,"#d8c79a",1); })()]
+    ];
+  },
+  objects:[
+    { label:"Stage", z:30, mk:[90,163],
+      draw(w,h,a){ const top=150;
+        let s=R(38,top+28,320,5,"#2a1a18",0,.2)
+          + blk(38,top,320,28,"#8a5e3c",1.5)
+          + R(38,top,320,6,"#ab7a50")
+          + [92,146,200,254,308].map(x=>L(x,top+7,x,top+27,sh("#8a5e3c",-.32),1.3,.45)).join("")
+          + lo(38,top+22,320,6,.22)
+          + R(38,top+7,320,3,sh("#8a5e3c",-.26),0,.7);
+        s+=[58,110,162,214,266,330].map(x=>
+            C(x,top-3,13,"url(#glow)",.85)+C(x,top-3,4.4,"#f7e2ad")+C(x-1.3,top-4.3,1.7,"#fffaef")).join("");
+        [[0,1],[w,-1]].forEach(c=>{
+          s+=PH(`M${n(c[0])},14 L${n(c[0]+c[1]*44)},14 q${n(c[1]*-6)},78 ${n(c[1]*-12)},${n(top+30)} L${n(c[0])},${n(top+30)} Z`,sh(a,-.26));
+          for(let i=1;i<4;i++)
+            s+=PH(`M${n(c[0]+c[1]*i*11)},14 q${n(c[1]*-3)},72 ${n(c[1]*(i*-2))},${n(top+28)}`,"",sh(a,i%2?-.4:-.12),4.2,.68);
+          s+=PH(`M${n(c[0]+c[1]*8)},104 q${n(c[1]*20)},6 ${n(c[1]*23)},-4`,"",sh(a,.24),4.2,.95);
+        });
+        s+=PH(`M0,14 L${n(w)},14 L${n(w)},30 `
+          + Array.from({length:20},()=>`q${n(-w/40)},10 ${n(-w/20)},0`).join(" ")+" Z",sh(a,-.12))
+          + R(0,12,w,5,sh(a,.18));
+        return s; },
+      e:{kind:"Direction",yr:"",h:"Theatre direction at InPlayers",
+         p:"Directing for an English-language theatre company in the Netherlands."} },
+    { label:"Microphone", z:34, mk:[197,104],
+      draw(w,h,a){ const sy=150, x=197;
+        return E(x,sy+1,15,4,"#3a2f36")
+          + blk(x-2.5,sy-44,5,44,"#4a3f46",1)
+          + blk(x-7,sy-52,14,9,"#4a3f46",2)
+          + C(x,sy-58,8,sh(a,.22)) + C(x-2.4,sy-60,2.8,"#ffffff",.42)
+          + C(x,sy-58,21,"url(#glow)",.5); },
+      e:{kind:"Hosting",yr:"2022",h:"Behind the Tech of ChatGPT",
+         who:"Studium Generale",
+         p:"Moderated a public lecture on language model architecture and its societal impact, for a general audience rather than a technical one."} },
+    { label:"Seats", z:50, mk:[295,210],
+      draw(w,h,a){ const fy=h-FLOOR;
+        return [52,172,268].map(x=>
+            cast(x+30,fy+1,30,3.4)
+            + blk(x+5,fy-17,6,17,"#4a3038",1) + blk(x+49,fy-17,6,17,"#4a3038",1)
+            + blk(x,fy-24,60,9,sh(a,-.24),2)
+            + blk(x+3,fy-48,54,26,sh(a,-.12),3)
+            + R(x+7,fy-44,46,3,"#ffffff",1,.15)
+            + L(x+30,fy-44,x+30,fy-26,sh(a,-.36),2,.55)
+            + blk(x-3,fy-41,6,19,sh(a,-.3),2) + blk(x+57,fy-41,6,19,sh(a,-.3),2)).join(""); },
+      e:{kind:"Organising",yr:"",h:"National Session, European Youth Parliament",
+         p:"Organiser. Delegates from across the country, one weekend, one schedule that cannot slip."} }
+  ]
+},
+
+/* ---------------- SUBLEVEL — the GitHub projects ---------------- */
+{
+  id:"cellar", name:"The Bunker", tag:"Projects on GitHub", accent:"#46c7d8",
+  hidden:true,
+  x:354, y:806, w:760, h:255, clip:null,
+  paper:["#39434f","#222932","steel"], wood:"#49525e", wain:"#5a6470",
+  view:["#2b333d","#49525e"],
+  decor(w,h,a){
+    const fy=h-FLOOR;
+    // steel deck plating instead of floorboards
+    let floor=R(0,fy,w,FLOOR,"#49525e")+hi(0,fy,w,2,.1)
+      + R(0,fy,w,1.6,"#2b333d");
+    for(let x=0;x<w;x+=62) floor+=L(x,fy+2,x,h,"#2b333d",1.2,.6)
+      + C(x+8,fy+7,1.5,"#2b333d",.7) + C(x+54,fy+7,1.5,"#2b333d",.7);
+    // hazard stripe along the front of the deck
+    let hazard="";
+    for(let x=-14;x<w;x+=16) hazard+=PG([[x,h-5],[x+8,h-5],[x+2,h],[x-6,h]],"#d8a93a",.85);
+    return [
+      [0, floor],
+      // ceiling: conduit, cable runs, strip lights
+      [1, R(0,0,w,15,"#2b333d") + lo(0,14,w,4,.25)
+          + [22,30].map(y=>L(0,y,w,y,"#5a6470",3.5,.8)).join("")
+          + [96,268,440,612].map(x=>blk(x,15,13,10,"#39434f",1)).join("")
+          + [150,430,660].map(x=>
+              `<g filter="url(#soft)">`+E(x+48,46,72,26,"#bfe8f2",.16)+`</g>`
+              + blk(x,24,96,9,"#39434f",2)+R(x+4,27,88,4,"#dff6fb",.92)).join("")],
+      // warm daylight from the cottage hatch, cutting through the cold
+      [2, PG([[329,0],[431,0],[486,fy],[274,fy]],"#ffe9bd",.14)
+          + PG([[352,0],[408,0],[436,fy],[324,fy]],"#fff3d6",.1)],
+      // the steel ladder down
+      [3, L(356,14,376,fy,"#8a95a2",6,.95) + L(404,14,424,fy,"#8a95a2",6,.95)
+          + [36,68,100,132,164,196].map((y,k)=>
+              L(358+k*3.4,y,406+k*3.4,y,"#9fabb8",5,.95)).join("")],
+      // rotating alert lamp
+      [4, blk(60,15,26,9,"#39434f",1.5)
+          + C(73,30,9,"#c0392b") + C(73,30,30,"url(#alert)",.8)
+          + C(70,27,3,"#ff8b7a",.75)],
+      // pipework along the back wall
+      [5, [188,206].map((y,k)=>L(452,y,742,y,"#5a6470",7,.85)).join("")
+          + [470,560,650,730].map(x=>blk(x-4,184,8,26,"#6a7482",1)).join("")],
+      // a humming server rack
+      [6, (()=>{ const x=320, top=fy-104;
+          let r=cast(x+30,fy+1,34,4)
+            + blk(x,top,60,104,"#2f3741",2) + blk(x-3,top-6,66,8,"#39434f",2);
+          for(let k=0;k<7;k++){ const y=top+9+k*13;
+            r+=blk(x+5,y,50,10,"#39434f",1)
+              + C(x+11,y+5,1.9,k%3?"#46c7d8":"#5fd99a",.95)
+              + C(x+18,y+5,1.9,k%2?"#5fd99a":"#2b333d",.9)
+              + R(x+26,y+3,24,4,"#2b333d",1,.8); }
+          return r; })()],
+      [7, hazard],
+      [60, blk(702,fy-30,46,30,"#3f4854",2)+blk(700,fy-36,50,8,"#4a525c",2)
+          + C(725,fy-20,6,"#46c7d8",.5)]
+    ];
+  },
+  objects:[
+    { label:"Scan wall", z:14, mk:[80,72],
+      draw(w,h,a){
+        return frame(20,34,120,78,"#2b333d",(x,y,ww,hh)=>{
+          let s=R(x,y,ww,hh,"#111a22");
+          [0,1,2].forEach(i=>{ const bw=(ww-10)/3, bx=x+3+i*(bw+2);
+            s+=R(bx,y+3,bw,hh-6,"#0b1117",1)
+              + E(bx+bw/2,y+3+(hh-6)/2,bw*.34,(hh-6)*.3,"#1d4a5c",.95)
+              + E(bx+bw/2,y+3+(hh-6)/2,bw*.19,(hh-6)*.16,i===1?"#46c7d8":"#2f6d80",.95)
+              + L(bx+bw/2,y+5,bx+bw/2,y+hh-9,a,.6,.5)
+              + L(bx+2,y+3+(hh-6)/2,bx+bw-2,y+3+(hh-6)/2,a,.6,.5); });
+          // target lock on the middle scan
+          const cx=x+ww/2, cy=y+hh/2;
+          s+=[[-1,-1],[1,-1],[-1,1],[1,1]].map(d=>
+              L(cx+d[0]*11,cy+d[1]*13,cx+d[0]*11,cy+d[1]*7,"#e8554a",1.4,.95)
+            + L(cx+d[0]*11,cy+d[1]*13,cx+d[0]*5,cy+d[1]*13,"#e8554a",1.4,.95)).join("");
+          s+=R(x+4,y+hh-9,20,4,a,.8,.8)+R(x+28,y+hh-9,12,4,"#2f6d80",.8,.7);
+          return s; }); },
+      e:{kind:"Repo",yr:"2026",h:"Virtual_Biopsy",
+         who:"Python · PyTorch · MONAI · nnU-Net",
+         p:"Predicting tumour purity in diffuse glioma from multimodal MRI and PET, supervised only at 133 real biopsy coordinates. UNet with channel attention reached 0.78 mean AUC across 16 folds; adding PET more than doubled the rank correlation with measured purity. The pretrained SwinUNETR lost at 0.58: too little labelled data for the bigger model.",
+         href:"https://github.com/ina0105/Virtual_Biopsy", link:"github.com/ina0105/Virtual_Biopsy"} },
+    { label:"Vault", z:40, mk:[70,202],
+      draw(w,h,a){ const fy=h-FLOOR, x=28;
+        return cast(x+42,fy+1,46,4)
+          + blk(x,fy-62,84,62,"#39434f",2.5) + blk(x-3,fy-68,90,8,"#454f5b",2.5)
+          + R(x+5,fy-57,74,52,"#2f3741",2)
+          // dial and keypad
+          + C(x+30,fy-31,15,"#5a6470") + C(x+30,fy-31,11,"#39434f")
+          + [0,45,90,135,180,225,270,315].map(d=>{
+              const r=d*Math.PI/180;
+              return L(x+30+Math.cos(r)*13,fy-31+Math.sin(r)*13,
+                       x+30+Math.cos(r)*10,fy-31+Math.sin(r)*10,"#8a95a2",1.2,.9);}).join("")
+          + L(x+30,fy-31,x+30+9,fy-31-5,"#cdd8e2",2.4)
+          + blk(x+54,fy-48,20,26,"#2b333d",1.5)
+          + [0,1,2].map(r=>[0,1,2].map(c=>
+              R(x+57+c*5,fy-45+r*8,3.6,5,r+c===0?a:"#5a6470",.8,.9)).join("")).join("")
+          + C(x+64,fy-15,3,"#5fd99a",.95) + C(x+64,fy-15,9,"url(#alert2)",.7); },
+      e:{kind:"Repo",yr:"2024",h:"assign3 — adversarial attacks",
+         who:"Python · PyTorch · CUDA",
+         p:"Adversarial attack methods written from scratch, with the training and evaluation harness around them, so attacks and hyperparameters can be compared across models. Coursework, kept public because the implementation is the point.",
+         href:"https://github.com/ina0105/assign3", link:"github.com/ina0105/assign3"} },
+    { label:"Main console", z:42, mk:[225,148],
+      draw(w,h,a){ const fy=h-FLOOR, x=150, tw=150;
+        return cast(x+tw/2,fy+1,88,4.4)
+          + blk(x+6,fy-54,12,54,"#39434f",1) + blk(x+tw-18,fy-54,12,54,"#39434f",1)
+          + blk(x-4,fy-62,tw+8,10,"#4a525c",1.5) + hi(x-4,fy-62,tw+8,2.4,.14)
+          // the big screen, running the TriMap projection
+          + blk(x+16,fy-104,58,38,"#2b333d",2) + R(x+19,fy-101,52,32,"#0b1117",1)
+          + [[11,8,"#46c7d8"],[19,15,"#5fd99a"],[27,10,"#46c7d8"],[35,18,"#e8c15a"],
+             [15,22,"#5fd99a"],[43,13,"#e8c15a"],[23,26,"#46c7d8"],[38,25,"#5fd99a"],
+             [31,20,"#46c7d8"],[8,17,"#e8c15a"]]
+              .map(d=>C(x+19+d[0],fy-101+d[1],2,d[2],.95)).join("")
+          + R(x+21,fy-99,14,2,a,.6,.55)
+          // side screen with scrolling lines
+          + blk(x+80,fy-96,40,30,"#2b333d",2) + R(x+83,fy-93,34,24,"#0b1117",1)
+          + [0,1,2,3,4].map(k=>R(x+85,fy-90+k*4.4,22-k*3,1.8,"#5fd99a",0,.8-k*.1)).join("")
+          + blk(x+28,fy-66,46,5,"#2b333d",1) + blk(x+82,fy-66,14,5,"#2b333d",1)
+          + C(x+124,fy-66,4,"#e8554a",.9); },
+      e:{kind:"Repo",yr:"2025",h:"WizTriMap",
+         who:"Python · Plotly Dash · PyTorch · TriMap",
+         p:"A dimensionality-reduction dashboard that tells you how much the projection lied. TriMap runs at 2D through 7D; every embedding has an inversion model behind it, so you can click a point, see the image it decodes to, and read reconstruction error as a measure of distortion. MNIST, FashionMNIST and CIFAR-100, plus a layer-by-layer walk through a CNN.",
+         href:"https://github.com/ina0105/WizTriMap", link:"github.com/ina0105/WizTriMap · ★2"} },
+    { label:"Containment tube", z:16, mk:[507,70],
+      draw(w,h,a){ const x=452,y=34;
+        let s=blk(x,y+66,108,8,"#4a525c",1)+lo(x,y+72,108,3,.2)
+          + L(x+10,y+74,x+10,y+84,"#4a525c",3,.7) + L(x+96,y+74,x+96,y+84,"#4a525c",3,.7);
+        // lit glass cylinder with a brain suspended in it
+        s+=blk(x+18,y+16,38,50,"#2b333d",2)
+          + R(x+21,y+19,32,44,"#123039",1)
+          + E(x+37,y+42,14,11,"#2f7f8c",.85)
+          + PH(`M${x+25},${y+42} q6,-9 12,-3 q7,-7 13,2 q-5,10 -13,6 q-8,3 -12,-5Z`,"#46c7d8","",0,.9)
+          + R(x+23,y+21,8,40,"#ffffff",2,.12)
+          + blk(x+16,y+11,42,7,"#5a6470",2) + blk(x+16,y+62,42,6,"#5a6470",2)
+          + C(x+37,y+70,24,"url(#alert3)",.6);
+        // readout panel beside it
+        s+=blk(x+62,y+28,38,38,"#2b333d",2)+R(x+65,y+31,32,32,"#0b1117",1)
+          + [0,1,2,3].map(k=>R(x+67,y+34+k*7,24-k*4,2,k%2?a:"#5fd99a",0,.85)).join("");
+        return s; },
+      e:{kind:"Repo",yr:"2026",h:"Scene_semantics",
+         who:"Python · PyTorch · Transformers · BLIP-2 · FAISS",
+         p:"Do language and vision-language models organise scenes the way the brain does? fMRI from multiple participants, split into language-network and visual-network RDMs, compared against model RDMs across five context conditions, from one word up to five distinct sentences, to isolate how much context a model needs before its geometry starts matching.",
+         href:"https://github.com/ina0105/Scene_semantics", link:"github.com/ina0105/Scene_semantics"} },
+    { label:"Dossier cabinet", z:44, mk:[505,178],
+      draw(w,h,a){ const fy=h-FLOOR, x=458;
+        let s=cast(x+46,fy+1,50,4)
+          + blk(x,fy-96,92,96,"#454f5b",2) + blk(x-3,fy-102,98,8,"#505965",2);
+        for(let k=0;k<3;k++){ const y=fy-92+k*31;
+          s+=blk(x+5,y,82,26,"#3c4551",1.5)
+            + R(x+32,y+9,28,7,"#6a7482",1.5)
+            + R(x+10,y+5,16,4,k===0?"#e8554a":"#5a6470",1,.9); }
+        // a half-open drawer of folders, stamped
+        s+=blk(x+5,fy-30,82,26,"#3c4551",1.5)
+          + blk(x+9,fy-44,74,16,"#c9bda2",1.5)
+          + blk(x+13,fy-48,66,14,"#d8ceb4",1.5)
+          + R(x+18,fy-45,30,3,"#8a7f68",0,.8)
+          + R(x+18,fy-40,20,2.4,"#8a7f68",0,.6)
+          + R(x+52,fy-46,22,8,"#b8453a",1,.9)
+          + R(x+32,fy-19,28,7,"#6a7482",1.5);
+        return s; },
+      e:{kind:"Repo",yr:"2025",h:"The-Power-of-Noise-Reproduction",
+         who:"Python · HuggingFace · retrieval evaluation",
+         p:"An independent reproduction of a SIGIR 2024 paper claiming that random documents improve RAG answers. Rebuilt from scratch: a 21-million-passage Wikipedia corpus with Natural Questions gold documents merged in, and generation runs varying the mix and position of gold, retrieved, distracting and random context. Our write-up is titled 'The Powerless Noise'.",
+         href:"https://github.com/ina0105/The-Power-of-Noise-Reproduction", link:"github.com/ina0105/The-Power-of-Noise-Reproduction"} },
+    { label:"Surveillance wall", z:18, mk:[640,86],
+      draw(w,h,a){ const x=584,y=40;
+        let s=blk(x,y,112,92,"#2b333d",2.5);
+        for(let r=0;r<2;r++) for(let c=0;c<3;c++){
+          const sx=x+6+c*34, sy=y+6+r*44;
+          s+=blk(sx,sy,30,38,"#1b222a",1.5)+R(sx+2,sy+2,26,30,"#0b1117",1);
+          const k=r*3+c;
+          if(k%4===0) s+=[0,1,2,3].map(q=>R(sx+4,sy+5+q*6,18-q*3,2,"#5fd99a",0,.8)).join("");
+          else if(k%4===1) s+=E(sx+15,sy+17,8,7,"#2f6d80",.9)+C(sx+15,sy+17,3,a,.95);
+          else if(k%4===2) s+=[[6,8],[14,14],[20,9],[10,20],[22,18]]
+                .map(d=>C(sx+d[0],sy+d[1],1.8,a,.9)).join("");
+          else s+=R(sx+4,sy+8,22,14,"#1d4a5c",1,.9)+L(sx+5,sy+20,sx+26,sy+11,a,1.2,.9);
+          s+=R(sx+2,sy+34,8,2,"#46c7d8",0,.7)+C(sx+26,sy+35,1.5,"#e8554a",.9);
+        }
+        return s; },
+      e:{kind:"Repo",yr:"2025",h:"Movie-Recommender-system",
+         who:"Python · LightGBM · XGBoost · scikit-learn",
+         p:"The same ranking task built three ways so each gain is attributable: a LightGBM baseline, a weighted ensemble of four models, and a lambdarank learner optimising NDCG directly on engineered features — temporal patterns, SVD latent factors, interaction-graph properties and session sequences. Splits are chronological throughout, so no future ratings leak in.",
+         href:"https://github.com/ina0105/Movie-Recommender-system", link:"github.com/ina0105/Movie-Recommender-system"} },
+    { label:"Cipher board", z:46, mk:[650,186],
+      draw(w,h,a){ const fy=h-FLOOR, x=606;
+        let s=cast(x+42,fy+1,46,4)
+          + PG([[x,fy],[x+86,fy-8],[x+90,fy-78],[x+4,fy-70]],"#2f3741")
+          + PG([[x+4,fy-4],[x+82,fy-11],[x+86,fy-74],[x+8,fy-66]],"#1b222a");
+        for(let r=0;r<5;r++) for(let c=0;c<6;c++){
+          if((r*6+c)%5===2) continue;
+          const px=x+10+c*13, py=fy-64+r*11.8 + c*1.1;
+          const lit=(r*6+c)%4===0;
+          s+=R(px,py,11,9.8,lit?a:"#39434f",1,lit?.95:.9)
+            +R(px+2.4,py+2.4,6,5,lit?"#0b1117":"#5a6470",.8,.6);
+        }
+        return s; },
+      e:{kind:"Repo",yr:"2025",h:"gameshub — Ina Times Games",
+         who:"HTML · CSS · vanilla JavaScript · no dependencies",
+         p:"Four puzzle games written by hand as a gift: a crossword that works out its own across/down numbering from a grid spec, plus Wordle, Connections and Strands. Four self-contained files, no framework and no build step. It opens in any browser.",
+         href:"https://github.com/ina0105/gameshub", link:"github.com/ina0105/gameshub"} }
+  ]
+}
+];
+
+/* ============================================================
+   RENDER ONE ROOM
+   ============================================================ */
+function roomInner(r){
+  const w=r.w, h=r.h;
+  let s = R(0,0,w,h,`url(#pap-${r.id})`);
+  s += `<g pointer-events="none">` + R(0,0,w,h,`url(#roomLight)`) + `</g>`;
+  let items=[];
+  r.decor(w,h,r.accent).forEach(d=>items.push({z:d[0],h:d[1]}));
+  r.objects.forEach((o,i)=>{
+    const m=o.mk;
+    items.push({z:o.z, h:
+      `<g class="obj" data-i="${i}" tabindex="-1" role="button" aria-label="${o.label}">`
+      + `<g class="shape">${o.draw.call(r,w,h,r.accent)}</g>`
+      + `<g class="mk" transform="translate(${n(m[0])},${n(m[1])})">`
+      + `<circle class="hit" r="16" fill="transparent"/>`
+      + `<circle class="ring" r="5"/>`
+      + `<circle class="halo" r="6.6" fill="#fffaf0" opacity=".55"/>`
+      + `<circle class="core" r="3.4"/></g></g>`});
+  });
+  items.sort((a,b)=>a.z-b.z);
+  s += items.map(i=>i.h).join("");
+  // overlays must never intercept clicks, or nothing inside the room is clickable
+  s += `<g pointer-events="none">`
+     + R(0,0,w,h,`url(#vig)`)
+     + R(0,0,w,4,"#2a1a10",0,.22) + R(0,0,4,h,"#2a1a10",0,.14)
+     + R(w-3,0,3,h,"#2a1a10",0,.1)
+     + `</g>`;
+  return s;
+}
+
+function roomDefs(){
+  return ROOMS.map(r=>
+    paperDef(`pap-${r.id}`, r.paper[0], r.paper[1], r.paper[2])
+    + `<linearGradient id="view-${r.id}" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0%" stop-color="${r.view[0]}"/><stop offset="100%" stop-color="${r.view[1]}"/></linearGradient>`
+    + (r.clip ? `<clipPath id="clip-${r.id}"><polygon points="${r.clip.map(p=>p.join(",")).join(" ")}"/></clipPath>`
+              : `<clipPath id="clip-${r.id}"><rect width="${r.w}" height="${r.h}"/></clipPath>`)
+  ).join("");
+}
+
+/* ============================================================
+   THE HOUSE — one block, gable roof, no wing
+   ============================================================ */
+const PLASTER="#f2e8d4", PLASTER2="#e0d2ba", TRIM="#fbf5e8";
+const ROOF="#b07a5e", ROOF2="#8f5f48", STONE="#cabda6";
+const APEX=[620,128], EAVE_L=[280,341], EAVE_R=[960,341];
+
+function houseBack(){
+  let s="";
+  s+=R(312,325,616,392,PLASTER2,3);
+  s+=R(318,331,604,380,PLASTER,2);
+  for(let i=0;i<24;i++){
+    const x=322+((i*149)%596), y=335+((i*211)%368);
+    s+=E(x,y,20,10,"#ffffff",.15);
+  }
+  // stone base course
+  s+=R(306,706,628,30,STONE,2);
+  for(let x=310;x<930;x+=36){
+    s+=R(x,710,Math.min(31,932-x),11,sh(STONE,-.1),2,.68);
+    if(x+16<930) s+=R(x+16,722,Math.min(31,932-x-16),11,sh(STONE,-.16),2,.54);
+  }
+  s+=R(306,706,628,3.5,sh(STONE,.2),0,.6);
+  // roof
+  s+=PG([[APEX[0],APEX[1]-4],[EAVE_R[0]+11,EAVE_R[1]],[EAVE_L[0]-11,EAVE_L[1]]],ROOF2);
+  s+=`<g clip-path="url(#roofClip)">`;
+  s+=PG([[APEX[0],APEX[1]-4],[EAVE_R[0]+11,EAVE_R[1]],[EAVE_L[0]-11,EAVE_L[1]]],ROOF);
+  for(let y=APEX[1];y<346;y+=14){
+    for(let x=258;x<990;x+=21)
+      s+=PH(`M${n(x)},${n(y)} a10.5,10.5 0 0 1 21,0 v7 h-21 Z`,(Math.round(y/14)%2)?sh(ROOF,.06):sh(ROOF,-.05),"",0,.95);
+    s+=R(254,y+6,742,1.4,"#000000",0,.1);
+  }
+  s+=`</g>`;
+  s+=PH(`M${EAVE_L[0]-11},${EAVE_L[1]} L${APEX[0]},${APEX[1]-4} L${EAVE_R[0]+11},${EAVE_R[1]}`,"",sh(ROOF,.2),3.6,.9);
+  s+=R(258,339,724,9,TRIM,2)+lo(258,345,724,3.5,.12);
+  // chimney
+  s+=R(782,176,44,70,"#a8836c",2)+R(778,170,52,12,"#b8947c",2);
+  for(let y=183;y<244;y+=11)
+    for(let x=784;x<824;x+=16)
+      s+=R(x+((y/11)%2?7:0),y,13,8,sh("#a8836c",-.1),1,.65);
+  s+=R(787,159,15,12,"#8a6a58",1.5)+R(806,159,15,12,"#8a6a58",1.5);
+  s+=E(794,155,8,3.5,"#ffffff",.1)+E(813,153,9,4,"#ffffff",.08);
+  return s;
+}
+
+function houseFront(){
+  let s="";
+  // floor slabs
+  s+=R(312,327,616,14,PLASTER2)+hi(312,327,616,2.6,.4)+lo(312,338,616,3,.12);
+  s+=R(312,514,616,12,PLASTER2)+hi(312,514,616,2.6,.4)+lo(312,523,616,3,.12);
+  s+=R(312,701,616,12,PLASTER2)+hi(312,701,616,2.6,.4);
+  // dividers between the paired rooms
+  s+=R(614,341,12,175,PLASTER2)+hi(614,341,12,2.4,.35);
+  s+=R(614,528,12,175,PLASTER2)+hi(614,528,12,2.4,.35);
+  // climbing roses on the outer corners
+  const vine=(bx,by,tx,ty,flip)=>{
+    let v=PH(`M${bx},${by} C${bx+flip*28},${by-66} ${tx-flip*25},${ty+80} ${tx},${ty}`,"","#5f7a52",3,.95);
+    for(let i=0;i<12;i++){
+      const t=i/11, px=bx+(tx-bx)*t+Math.sin(t*7)*8*flip, py=by+(ty-by)*t;
+      v+=E(px,py,5.8,4.5,i%2?"#6b8a5c":"#5f7a52",.95);
+      if(i%3===1) v+=C(px+6.6*flip,py-4,3.8,"#d98fa0",.95)+C(px+6.6*flip,py-4,1.7,"#f2c9ce");
+      if(i%4===2) v+=C(px-6*flip,py+3,3.2,"#e8a3b0",.9);
+    }
+    return v;
+  };
+  s+=vine(300,712,320,341,1);
+  s+=vine(940,712,922,341,-1);
+  // window boxes
+  const boxAt=(x,y,w)=>{
+    let b=blk(x,y,w,13,"#9c7a56",2)+R(x+2.5,y+2.5,w-5,2.5,sh("#9c7a56",-.24),0,.6);
+    for(let i=0;i<Math.floor(w/11);i++){
+      const px=x+6+i*11;
+      b+=E(px,y-2,5.6,4.6,i%2?"#6f8f5c":"#5f7a52")+C(px-1.8,y-5.4,3.1,["#d98fa0","#e8c26a","#d9a0c4","#e89a7a"][i%4])
+        +C(px+2.6,y-3.2,2.5,["#e8c26a","#d98fa0","#e89a7a","#d9a0c4"][i%4],.95);
+    }
+    return b;
+  };
+  s+=boxAt(617,516,44)+boxAt(372,703,46)+boxAt(840,703,46);
+  // gable bargeboard
+  s+=PH(`M${EAVE_L[0]-22},${EAVE_L[1]+2} L${APEX[0]},${APEX[1]-6} L${EAVE_R[0]+22},${EAVE_R[1]+2}`,"",TRIM,7,1);
+  s+=PH(`M${EAVE_L[0]-12},${EAVE_L[1]+2} L${APEX[0]},${APEX[1]+5} L${EAVE_R[0]+12},${EAVE_R[1]+2}`,"",sh(TRIM,-.14),2,.6);
+  return s;
+}
+
+/* the cellar hatch in the ground floor, with light spilling up out of it */
+function hatch(){
+  const x1=578, x2=662, y=702;
+  // a warm pool of light washing across the stone around the opening
+  let s=`<g class="hatchGlow">`
+    + E(620,y+9,96,36,"#ffdfa0",.34)
+    + E(620,y+7,62,24,"#ffeec4",.5)
+    + E(620,y+5,38,14,"#fff6dd",.5) + `</g>`;
+  // the opening itself
+  s+=R(x1-4,y-3,x2-x1+8,6,"#b59a79",1.5)
+    + R(x1,y,x2-x1,16,"#3a2a1c",1.5)
+    + R(x1+3,y+1,x2-x1-6,13,"url(#hatchLight)")
+    + R(x1,y,x2-x1,3.5,"#2a1c12",0,.55);
+  // rungs of the ladder dropping away into the light
+  s+=[4.5,9,13].map((d,i)=>L(x1+13,y+d,x2-13,y+d,"#8a6e50",2.4,.8-i*.2)).join("");
+  // the door leaf, propped open on its hinge
+  s+=PG([[x2-2,y+2],[x2+34,y-28],[x2+41,y-23],[x2+5,y+7]],"#9c7a56")
+    + PG([[x2-2,y+2],[x2+34,y-28],[x2+35,y-24],[x2-1,y+6]],sh("#9c7a56",-.32))
+    + PG([[x2+8,y-5],[x2+30,y-23],[x2+32,y-21],[x2+10,y-3]],sh("#9c7a56",.18))
+    + C(x2+2,y+3,3.2,"#6b5340");
+  // generous hit area
+  s+=`<rect x="${x1-34}" y="${y-34}" width="${x2-x1+76}" height="62" fill="transparent"/>`;
+  return s;
+}
+
+/* ============================================================
+   THE BACK GARDEN — painted behind and in front of the house
+   ============================================================ */
+const HORIZON=646, YL=-1100, YW=3440;
+
+function yardBack(){
+  let s=R(YL,-900,YW,HORIZON+900,"url(#skyG)");
+  s+=C(948,116,230,"url(#sunG)");
+  // clouds
+  [[150,156,88],[486,104,62],[1012,176,76],[1352,120,54],[-130,190,66]].forEach(c=>{
+    s+=E(c[0],c[1],c[2],c[2]*.36,"#fdfaf2",.7)
+      +E(c[0]-c[2]*.46,c[1]+c[2]*.13,c[2]*.5,c[2]*.27,"#fdfaf2",.58)
+      +E(c[0]+c[2]*.5,c[1]+c[2]*.11,c[2]*.44,c[2]*.25,"#fdfaf2",.52);
+  });
+  // far treeline, then a nearer hedge
+  for(let x=YL;x<YL+YW;x+=78){
+    const hh=44+((Math.abs(x)*7)%38);
+    s+=E(x,HORIZON-hh*.42,52,hh*.6,"#93ab83",.8);
+  }
+  for(let x=YL;x<YL+YW;x+=58) s+=E(x,HORIZON-14,44,28,"#72906a",.95);
+  s+=R(YL,HORIZON-8,YW,14,"#72906a",0,.95);
+  // picket fence
+  s+=R(YL,HORIZON-2,YW,7,"#e8e0cd");
+  for(let x=YL;x<YL+YW;x+=26)
+    s+=PG([[x,HORIZON+4],[x+13,HORIZON+4],[x+13,HORIZON-30],[x+6.5,HORIZON-38],[x,HORIZON-30]],"#f2ebda")
+      + PG([[x+10,HORIZON+4],[x+13,HORIZON+4],[x+13,HORIZON-30],[x+10,HORIZON-33]],"#d9d0ba");
+  s+=R(YL,HORIZON-26,YW,5,"#e0d7c1")+R(YL,HORIZON-8,YW,5,"#e0d7c1");
+  // lawn
+  s+=R(YL,HORIZON,YW,1600,"url(#lawnG)");
+  for(let i=1;i<11;i++) s+=R(YL,HORIZON+i*i*2.6,YW,i*2.2+5,"#ffffff",0,.045);
+  // a tree on each side, standing behind the house
+  const tree=(x,gy,sc)=>{
+    let t=E(x,gy+4,46*sc,13*sc,"#5f7f4e",.3)
+      + PH(`M${x-9*sc},${gy} q3,${-70*sc} ${-2*sc},${-96*sc} q14,10 ${22*sc},${-2*sc} q-8,${26*sc} ${-4*sc},${98*sc} Z`,"#8a6a4a");
+    [[0,-128,56],[-38,-104,42],[38,-108,44],[-16,-158,40],[22,-152,36],[0,-96,46]]
+      .forEach((b,i)=>{ t+=E(x+b[0]*sc,gy+b[1]*sc,b[2]*sc,b[2]*sc*.86,
+          i%2?"#6f9460":"#7fa36b",.97); });
+    t+=E(x-18*sc,gy-150*sc,22*sc,16*sc,"#93b87c",.5);
+    return t;
+  };
+  s+=tree(162,HORIZON+36,1.08)+tree(1072,HORIZON+28,.92);
+  // bushes along the fence line
+  [[-40,8,.9],[300,14,.7],[760,10,.8],[1260,16,.75],[1480,8,.9]].forEach(b=>{
+    const x=b[0], gy=HORIZON+b[1], sc=b[2];
+    s+=E(x,gy,38*sc,26*sc,"#6f9460")+E(x-24*sc,gy+4,26*sc,19*sc,"#7fa36b")
+      +E(x+24*sc,gy+3,24*sc,18*sc,"#7fa36b")
+      +[[-10,-12],[12,-9],[0,-18]].map(f=>C(x+f[0]*sc,gy+f[1]*sc,4*sc,"#e8c26a",.9)).join("");
+  });
+  return s;
+}
+
+function yardFront(){
+  // the ground the house stands on
+  let s=E(620,748,398,30,"#3f5a33",.2)
+    + E(620,744,348,21,"#3f5a33",.14);
+  // soil borders hugging the foundations, lightly planted
+  const bed=(x1,x2)=>{
+    const w=x2-x1;
+    let b=PH(`M${x1},743 q${w/2},-13 ${w},0 q${-w/2},23 ${-w},0Z`,"#6b543d")
+        + PH(`M${x1+6},744 q${w/2},-9 ${w-12},0 q${-(w-12)/2},13 ${-(w-12)},0Z`,"#5c4733",0,0,.6);
+    for(let x=x1+14;x<x2-8;x+=29){
+      const t=(x-x1)/w, yy=742+Math.sin(t*7)*3;
+      b+=E(x,yy+3,10,7,"#6f9460")+E(x+8,yy+5,8,6,"#7fa36b")
+        +C(x+3,yy-5,3.4,["#d9a6b0","#e2c489","#c9a7cc","#e0a98f"][Math.floor(t*11)%4],.95)
+        +C(x+9,yy-2,2.6,["#e2c489","#d9a6b0","#e0a98f","#c9a7cc"][Math.floor(t*7)%4],.9);
+    }
+    return b;
+  };
+  s+=bed(300,566)+bed(676,944);
+  // a terracotta pot and a watering can tucked against the corners
+  s+=E(272,768,28,9,"#3f5a33",.2)
+    + PG([[254,744],[292,744],[287,768],[259,768]],"#c07f57")
+    + R(252,740,42,7,"#cd8c63",2) + E(273,744,17,5,"#8a5f44",.45)
+    + E(273,734,17,12,"#6f9460")+E(263,737,12,9,"#7fa36b")+E(283,736,11,8,"#7fa36b")
+    + C(268,726,3.4,"#d9a6b0",.95)+C(280,728,2.8,"#e2c489",.9);
+  s+=E(968,770,27,9,"#3f5a33",.2)
+    + blk(950,744,34,26,"#9db3a8",2.5) + blk(947,739,40,7,"#aec2b8",2.5)
+    + PH("M984,750 q18,2 20,18 l-6,0 q-2,-11 -14,-12Z","#9db3a8")
+    + PH("M956,739 q9,-12 20,0","","#8aa096",4);
+  // grass tufts across the near lawn
+  for(let x=120;x<1140;x+=34){
+    const gy=772+Math.sin(x*.055)*13;
+    s+=PH(`M${x},${gy} q3,-12 7,-15 q-1,10 1,15Z`,"#6f9460",0,.7)
+      +PH(`M${x+9},${gy+3} q4,-10 9,-12 q-3,8 -2,12Z`,"#7fa36b",0,.65);
+  }
+  return s;
+}
+
+</script>
+<script>
+/* ---- your details ---- */
+const PROFILE={
+  name:"Ina Klaric",
+  contact:[
+    ["Email","inaklaric007@gmail.com","mailto:inaklaric007@gmail.com"],
+    ["Phone","+31 6 2507 0705","tel:+31625070705"],
+    ["GitHub","github.com/ina0105","https://github.com/ina0105"],
+    // Scholar: paste your profile URL in and uncomment —
+    // ["Scholar","Google Scholar","https://scholar.google.com/citations?user=YOUR-ID"],
+    ["Portfolio","ina0105.github.io","https://ina0105.github.io"]
+  ]
+};
+
+/* what the opening guide says — ordered for someone with 30 seconds */
+const GUIDE={
+  headline:"Five rooms and a bunker.",
+  lede:"AI master's in Amsterdam. Three published papers, and NLP pipelines at Robeco by day.",
+  rooms:[
+    ["study", "Papers, and the two degrees"],
+    ["work",  "Robeco, Undabot, teaching, founding ENIGMA"],
+    ["cellar","Seven GitHub repositories — through the lit hatch"],
+    ["cut",   "The documentary, the short films, casting"],
+    ["stage", "Directing, moderating, organising"],
+    ["away",  "Where she has lived, the languages, the volleyball"]
+  ]
+};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// the view hugs the house itself, with only a little garden around it
+const BOX={x:246, y:106, w:748, h:700}, PAD=30;
+let VBX=BOX.x, VBY=BOX.y, VBW=BOX.w, VBH=BOX.h;
+
+$("#pName").textContent=PROFILE.name;
+
+const DEFS=`<defs>
+${roomDefs()}
+<filter id="soft" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4"/></filter>
+<radialGradient id="glow"><stop offset="0%" stop-color="#ffe6b0" stop-opacity=".75"/><stop offset="55%" stop-color="#ffd995" stop-opacity=".22"/><stop offset="100%" stop-color="#ffd07a" stop-opacity="0"/></radialGradient>
+<linearGradient id="daylight" x1="0" y1="0" x2=".4" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity=".42"/><stop offset="60%" stop-color="#ffffff" stop-opacity=".06"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+<linearGradient id="roomLight" x1=".7" y1="0" x2=".1" y2="1"><stop offset="0%" stop-color="#fff2d4" stop-opacity=".2"/><stop offset="100%" stop-color="#4a3020" stop-opacity=".16"/></linearGradient>
+<radialGradient id="vig" cx=".5" cy=".38" r=".78"><stop offset="55%" stop-color="#2a1a10" stop-opacity="0"/><stop offset="100%" stop-color="#2a1a10" stop-opacity=".34"/></radialGradient>
+<radialGradient id="globeShade" cx=".32" cy=".26"><stop offset="0%" stop-color="#fff" stop-opacity=".4"/><stop offset="65%" stop-color="#fff" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".3"/></radialGradient>
+<radialGradient id="alert"><stop offset="0%" stop-color="#ff6a58" stop-opacity=".7"/><stop offset="100%" stop-color="#ff6a58" stop-opacity="0"/></radialGradient>
+<radialGradient id="alert2"><stop offset="0%" stop-color="#5fd99a" stop-opacity=".8"/><stop offset="100%" stop-color="#5fd99a" stop-opacity="0"/></radialGradient>
+<radialGradient id="alert3"><stop offset="0%" stop-color="#46c7d8" stop-opacity=".6"/><stop offset="100%" stop-color="#46c7d8" stop-opacity="0"/></radialGradient>
+<linearGradient id="skyG" x1="0" y1="0" x2=".12" y2="1">
+  <stop offset="0%" stop-color="#aecbd8"/><stop offset="42%" stop-color="#cfdfd9"/>
+  <stop offset="78%" stop-color="#e6e6d2"/><stop offset="100%" stop-color="#f0e7d0"/></linearGradient>
+<linearGradient id="lawnG" x1="0" y1="0" x2=".08" y2="1">
+  <stop offset="0%" stop-color="#93b074"/><stop offset="38%" stop-color="#83a364"/>
+  <stop offset="100%" stop-color="#6f8f52"/></linearGradient>
+<radialGradient id="sunG"><stop offset="0%" stop-color="#fff6d8" stop-opacity=".75"/>
+  <stop offset="100%" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>
+<linearGradient id="hatchLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe9bd"/><stop offset="100%" stop-color="#c98f45"/></linearGradient>
+<clipPath id="roofClip"><polygon points="620,124 982,343 258,343"/></clipPath>
+</defs>`;
+
+$("#scene").innerHTML = DEFS
+  + `<g id="cam">`
+  + `<g id="yard" pointer-events="none">${yardBack()}</g>`
+  + `<g id="back">${houseBack()}</g>`
+  + ROOMS.map(r=>
+      `<g class="room${r.hidden?" cellar":""}" data-id="${r.id}" style="--rc:${r.accent}" tabindex="${r.hidden?-1:0}" role="button" aria-label="${esc(r.name)} — ${esc(r.tag)}">`
+      + `<g transform="translate(${r.x},${r.y}) scale(${K})">`
+      + `<g clip-path="url(#clip-${r.id})">`
+      + `<rect width="${r.w}" height="${r.h}" fill="${r.paper[0]}"/>`
+      + roomInner(r) + `</g></g></g>`).join("")
+  + `<g id="front">${houseFront()}</g>`
+  + `<g id="hatch" role="button" tabindex="0" aria-label="Open the cellar — projects on GitHub">${hatch()}</g>`
+  + `<g id="yardfg" pointer-events="none">${yardFront()}</g>`
+  + `</g>`;
+
+/* ---- camera ---- */
+const cam=$("#cam");
+const VISIBLE=ROOMS.filter(r=>!r.hidden);
+let open=null;
+
+function fitViewBox(){
+  const ar=Math.max(.35,innerWidth/Math.max(1,innerHeight));
+  if(ar>=BOX.w/BOX.h){ VBH=BOX.h; VBW=BOX.h*ar; } else { VBW=BOX.w; VBH=BOX.w/ar; }
+  VBX=BOX.x+BOX.w/2-VBW/2; VBY=BOX.y+BOX.h/2-VBH/2;
+  $("#scene").setAttribute("viewBox",`${VBX} ${VBY} ${VBW} ${VBH}`);
+  if(open) zoomTo(open,true);
+}
+function zoomTo(r,instant){
+  const rw=r.w*K, rh=r.h*K;                       // the room as actually drawn
+  const s=Math.min(VBW/(rw+PAD*2), VBH/(rh+PAD*2));
+  if(instant) cam.style.transition="none";
+  cam.style.transform=`translate(${VBX+VBW/2-s*(r.x+rw/2)}px,${VBY+VBH/2-s*(r.y+rh/2)}px) scale(${s})`;
+  if(instant){ cam.getBoundingClientRect(); cam.style.transition=""; }
+}
+function enter(el){
+  const r=ROOMS.find(x=>x.id===el.dataset.id);
+  open=r;
+  document.documentElement.style.setProperty("--ac",r.accent);
+  $("#cardBar").style.background=r.accent;
+  $("#capTag").textContent=r.tag;
+  $("#capName").textContent=r.name;
+  document.querySelectorAll(".room").forEach(g=>g.classList.toggle("active",g===el));
+  document.querySelectorAll("#dock button").forEach(d=>d.classList.toggle("now",d.dataset.go===r.id));
+  document.body.classList.add("zoom");
+  hideTip();
+  zoomTo(r);
+  writeHash(r.id);
+}
+function leave(){
+  if(!open) return;
+  open=null; closeCard();
+  document.body.classList.remove("zoom");
+  document.querySelectorAll(".room").forEach(g=>g.classList.remove("active"));
+  document.querySelectorAll("#dock button").forEach(d=>d.classList.remove("now"));
+  cam.style.transform="";
+  writeHash(null);
+  // let the camera finish travelling before the cellar disappears again
+  setTimeout(()=>{ if(!open) document.body.classList.remove("cellar-open"); },640);
+}
+function openCellar(){
+  document.body.classList.add("cellar-open");
+  requestAnimationFrame(()=>enter(document.querySelector('.room[data-id="cellar"]')));
+}
+
+/* ---- interaction ----
+   Closed house: click a room to enter.
+   Inside a room: click an object to read it; click anywhere
+   that is not this room to step back out.                      */
+$("#scene").addEventListener("click",e=>{
+  hideGuide();
+  if(!open && e.target.closest("#hatch")){ openCellar(); return; }
+  const el=e.target.closest(".room");
+  if(!open){ if(el) enter(el); return; }
+  if(!el || el.dataset.id!==open.id){ leave(); return; }
+  const g=e.target.closest(".obj");
+  if(!g){ closeCard(); return; }
+  const x=open.objects[+g.dataset.i].e;
+  showCard(`<div class="kv"><span class="kind">${esc(x.kind)}</span>${x.yr?`<span class="yr">${esc(x.yr)}</span>`:""}</div>
+    <h2>${esc(x.h)}</h2>${x.who?`<div class="who">${esc(x.who)}</div>`:""}
+    <p>${esc(x.p)}</p>
+    ${x.href?`<a class="go" href="${esc(x.href)}" target="_blank" rel="noopener">${esc(x.link)} →</a>`:""}`);
+});
+$("#scene").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ") return;
+  if(open) return;
+  if(e.target.closest("#hatch")){ e.preventDefault(); openCellar(); return; }
+  const el=e.target.closest(".room"); if(!el) return;
+  e.preventDefault(); enter(el);
+});
+
+/* ---- hover tooltip over the closed house ---- */
+const tip=$("#tip");
+function hideTip(){ tip.classList.remove("on"); }
+$("#scene").addEventListener("mousemove",e=>{
+  if(open) return hideTip();
+  const hz=e.target.closest("#hatch");
+  const el=hz?null:e.target.closest(".room");
+  if(!hz && !el) return hideTip();
+  const r=hz?ROOMS.find(x=>x.id==="cellar"):ROOMS.find(x=>x.id===el.dataset.id);
+  $("#tipTag").textContent=hz?"Classified":r.tag;
+  $("#tipName").textContent=r.name;
+  tip.style.setProperty("--tc",r.accent);
+  tip.style.left=e.clientX+"px"; tip.style.top=e.clientY+"px";
+  tip.classList.add("on");
+});
+$("#scene").addEventListener("mouseleave",hideTip);
+
+function showCard(h){ $("#cardIn").innerHTML=h; $("#card").classList.add("on"); }
+function closeCard(){ $("#card").classList.remove("on"); }
+$("#cardX").addEventListener("click",e=>{ e.stopPropagation(); closeCard(); });
+$("#cBtn").addEventListener("click",()=>{
+  $("#cardBar").style.background="var(--ac)";
+  showCard(`<div class="kv"><span class="kind">Contact</span></div>`
+    + PROFILE.contact.map(c=>`<div class="row"><span class="k">${esc(c[0])}</span>${
+        c[2]?`<a href="${esc(c[2])}"${c[2].startsWith("http")?' target="_blank" rel="noopener"':''}>${esc(c[1])}</a>`
+            :`<span style="color:var(--dim)">${esc(c[1])}</span>`}</div>`).join(""));
+});
+
+/* ---- the dock: every room, one hop away, while you are inside one ---- */
+$("#dock").innerHTML = GUIDE.rooms.map(([id],i)=>{
+  const r=ROOMS.find(x=>x.id===id);
+  return (r.hidden?`<span class="sep"></span>`:"")
+    + `<button data-go="${id}" style="--dc:${r.accent}" title="${esc(r.name)}" aria-label="${esc(r.name)}"></button>`;
+}).join("");
+$("#dock").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-go]"); if(!b) return;
+  const id=b.dataset.go;
+  if(open && open.id===id) return;
+  closeCard();
+  if(id==="cellar") openCellar(); else enter(document.querySelector(`.room[data-id="${id}"]`));
+});
+
+/* ---- deep links: /#study opens straight into that room ---- */
+let hashBusy=false;
+// Sandboxed previews (about:srcdoc, some embeds) forbid history writes and
+// throw SecurityError. Probe once with a no-op replace; if it fails, the house
+// still works, it just stops touching the address bar.
+const CAN_ROUTE=(()=>{ try{
+    // about:srcdoc and blob: previews have no shareable URL and reject history
+    // writes outright, so don't touch the address bar there at all.
+    if(!/^(https?|file):$/.test(location.protocol)) return false;
+    history.replaceState(history.state,"",location.href);
+    return true;
+  }catch(e){ return false; } })();
+function writeHash(id){
+  if(!CAN_ROUTE) return;
+  hashBusy=true;
+  try{
+    if(id){ if(location.hash!=="#"+id) location.hash=id; }
+    else if(location.hash){
+      try{ history.replaceState(null,"",location.pathname+location.search); }
+      catch(e){ location.hash=""; }
+    }
+  }catch(e){}
+  setTimeout(()=>{hashBusy=false;},0);
+}
+function readHash(){
+  let id="";
+  try{ id=decodeURIComponent(location.hash.replace(/^#/,"")); }catch(e){ return false; }
+  const r=ROOMS.find(x=>x.id===id);
+  if(!r){ if(open) leave(); return false; }
+  if(open && open.id===id) return true;
+  closeCard();
+  if(r.hidden) openCellar(); else enter(document.querySelector(`.room[data-id="${id}"]`));
+  return true;
+}
+addEventListener("hashchange",()=>{ if(!hashBusy) readHash(); });
+
+/* ---- the opening guide ---- */
+const guide=$("#guide");
+$("#guideH").textContent=GUIDE.headline;
+$("#guideP").textContent=GUIDE.lede;
+$("#guideList").innerHTML=GUIDE.rooms.map(([id,what])=>{
+  const r=ROOMS.find(x=>x.id===id);
+  return `<li><button data-go="${id}" style="--gc:${r.accent}">
+    <span class="d"></span>
+    <span class="t">${esc(r.name)}<span class="w">${esc(what)}</span></span></button></li>`;
+}).join("");
+$("#guideLinks").innerHTML=
+  `<a href="${esc(PROFILE.contact[2][2])}" target="_blank" rel="noopener">GitHub</a>`
++ `<a href="${esc(PROFILE.contact[0][2])}">Email</a>`
++ `<button class="go" id="guideGo">Look around</button>`;
+
+function showGuide(){ guide.classList.add("on"); }
+function hideGuide(){ guide.classList.remove("on"); }
+$("#guideList").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-go]"); if(!b) return;
+  hideGuide(); closeCard();
+  if(b.dataset.go==="cellar"){ openCellar(); return; }
+  enter(document.querySelector(`.room[data-id="${b.dataset.go}"]`));
+});
+$("#guideGo").addEventListener("click",hideGuide);
+$("#gBtn").addEventListener("click",()=>{ closeCard(); guide.classList.toggle("on"); });
+// a deep link goes straight to its room; otherwise the guide introduces the house
+if(!readHash()) setTimeout(showGuide,650);
+
+fitViewBox();
+addEventListener("resize",fitViewBox);
+
+addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    if(guide.classList.contains("on")) return hideGuide();
+    $("#card").classList.contains("on") ? closeCard() : leave(); return; }
+  if(!open||!["ArrowLeft","ArrowRight"].includes(e.key)) return;
+  const i=VISIBLE.findIndex(r=>r.id===open.id);
+  if(i<0){ closeCard(); leave(); return; }   // in the cellar: step back up
+  const j=e.key==="ArrowRight"?(i+1)%VISIBLE.length:(i-1+VISIBLE.length)%VISIBLE.length;
+  closeCard(); enter(document.querySelector(`.room[data-id="${VISIBLE[j].id}"]`));
+});
+</script>
+</body>
+</html>
